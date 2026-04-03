@@ -1,0 +1,24 @@
+{
+  "name": "8sim",
+  "version": "0.1.0",
+  "description": "Intel 8080 CPU Simulator",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/8sim.browser.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0",
+    "esbuild": "^0.24.0"
+  }
+}
