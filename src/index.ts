@@ -5,6 +5,7 @@ export type { IMemory } from './interfaces/IMemory.js';
 export type { IIODevice } from './interfaces/IIODevice.js';
 export type { IInterruptController } from './interfaces/IInterruptController.js';
 export type { IClock } from './interfaces/IClock.js';
+export type { IBusObserver } from './interfaces/IBusObserver.js';
 
 // CPU
 export { Cpu8080 } from './cpu/Cpu8080.js';
@@ -13,6 +14,7 @@ export { Flags } from './cpu/Flags.js';
 
 // Bus
 export { Bus } from './bus/Bus.js';
+export { SnoopBus } from './bus/SnoopBus.js';
 export type { BusRegion } from './bus/BusRegion.js';
 
 // Memory
