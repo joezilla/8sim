@@ -6,6 +6,7 @@ export type { IIODevice } from './interfaces/IIODevice.js';
 export type { IInterruptController } from './interfaces/IInterruptController.js';
 export type { IClock } from './interfaces/IClock.js';
 export type { IBusObserver } from './interfaces/IBusObserver.js';
+export type { IS100Card } from './interfaces/IS100Card.js';
 
 // CPU
 export { Cpu8080 } from './cpu/Cpu8080.js';
@@ -31,6 +32,15 @@ export { InterruptController } from './interrupt/InterruptController.js';
 // Clock
 export { ImmediateClock } from './clock/ImmediateClock.js';
 export { SystemClock } from './clock/SystemClock.js';
+
+// Cards
+export { Usart8251 } from './cards/Usart8251.js';
+export { ImsaiSioCard } from './cards/ImsaiSioCard.js';
+export type { SioCardOptions } from './cards/ImsaiSioCard.js';
+export { FdcPlusClient } from './cards/FdcPlusClient.js';
+export type { WebSocketLike } from './cards/FdcPlusClient.js';
+export { MitsDcddCard } from './cards/MitsDcddCard.js';
+export type { DcddOptions } from './cards/MitsDcddCard.js';
 
 // Utils
 export * from './util/bits.js';
