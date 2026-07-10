@@ -1,4 +1,5 @@
 export type { IModule } from './IModule.js';
+export type { ICpu } from './ICpu.js';
 export type { IBus } from './IBus.js';
 export type { IMemory } from './IMemory.js';
 export type { IIODevice } from './IIODevice.js';

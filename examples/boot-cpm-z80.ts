@@ -1,11 +1,14 @@
 /**
- * Interactive CP/M boot harness.
+ * Interactive CP/M boot harness — Zilog Z80 edition.
  *
- * Boots the same machine as tests/integration/bootdisk.live.test.ts — 8080 +
- * 63.75K RAM + 88-DSK boot PROM + Intel 8251 console (0x12/0x13) + MITS 88-DCDD
- * floppy controller backed by a live fdcplus-web server over WebSocket — but
- * bridges the 8251 console to this process's stdin/stdout so you get a real
- * interactive CP/M session. Type at the A> prompt; Ctrl-] quits the emulator.
+ * Identical to examples/boot-cpm.ts but drives a Z80 core instead of the 8080.
+ * Boots the same machine as tests/integration/bootdisk.live.test.ts — 63.75K RAM
+ * + 88-DSK boot PROM + Intel 8251 console (0x12/0x13) + MITS 88-DCDD floppy
+ * controller backed by a live fdcplus-web server over WebSocket — but bridges the
+ * 8251 console to this process's stdin/stdout so you get a real interactive CP/M
+ * session. Type at the A> prompt; Ctrl-] quits the emulator.
+ *
+ * The Z80 is 8080-binary-compatible, so stock Altair CP/M boots unchanged.
  *
  * Requires a running fdcplus-web server with a bootable disk mounted on
  * drive 0. The server URL and API token are read from FDCPLUS_URL and
@@ -13,16 +16,14 @@
  * The CPU runs at an authentic 2 MHz by default; set CPU_HZ=4mhz or
  * CPU_HZ=max (or a raw Hz number) to change it.
  *
- *   npm run boot:cpm
+ *   npm run boot:cpm:z80
  *
  * Note: disk writes (PIP, ED, SAVE, ...) are flushed back to the mounted image
  * on the server — this is a read/write session against the real disk file.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Cpu8080 } from '../src/cpu/Cpu8080.js';
 import { CpuZ80 } from '../src/cpu/z80/CpuZ80.js';
-import type { ICpu } from '../src/interfaces/ICpu.js';
 import { InterruptController } from '../src/interrupt/InterruptController.js';
 import { Ram } from '../src/memory/Ram.js';
 import { Rom } from '../src/memory/Rom.js';
@@ -126,11 +127,7 @@ async function main(): Promise<void> {
   const dcdd = new MitsDcddCard('dcdd', new NodeWsAdapter(raw));
   dcdd.attach(bus);
 
-  // CPU selection: 8080 (default) or Z80. Both share the (bus, pic) constructor
-  // and satisfy ICpu, so MachineRunner drives either unchanged. Stock Altair
-  // CP/M is 8080-compatible, so it boots on the Z80 as well.
-  const cpuType = (process.env.CPU ?? '8080').trim().toLowerCase();
-  const cpu: ICpu = cpuType === 'z80' ? new CpuZ80(bus, pic) : new Cpu8080(bus, pic);
+  const cpu = new CpuZ80(bus, pic);
   cpu.reset();
   cpu.pc = 0xff00;
 
@@ -159,8 +156,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('[emulator halted]'));
 
   const speedLabel = SPEED === 'max' ? 'max speed' : `${(SPEED / 1_000_000).toFixed(SPEED % 1_000_000 ? 3 : 0)} MHz`;
-  const cpuLabel = cpuType === 'z80' ? 'Z80' : '8080';
-  process.stdout.write(`Booting CP/M (${cpuLabel}) from fdcplus-web at ${speedLabel}...  (Ctrl-] to quit)\r\n`);
+  process.stdout.write(`Booting CP/M (Z80) from fdcplus-web at ${speedLabel}...  (Ctrl-] to quit)\r\n`);
 
   // --- Run at the configured speed, yielding so WS I/O + timers advance ----
   const runner = new MachineRunner(cpu, {
