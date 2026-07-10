@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "boot:cpm": "esbuild examples/boot-cpm.ts --bundle --platform=node --format=esm --outfile=examples/boot-cpm.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-cpm.mjs",
-    "fixtures:z80": "curl -fsSL -o tests/fixtures/prelim.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/prelim.com && curl -fsSL -o tests/fixtures/zexdoc.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexdoc.com && curl -fsSL -o tests/fixtures/zexall.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexall.com && echo 'Z80 test fixtures downloaded to tests/fixtures/'"
+    "fixtures:z80": "curl -fsSL -o tests/fixtures/prelim.com https://raw.githubusercontent.com/superzazu/z80/master/roms/prelim.com && curl -fsSL -o tests/fixtures/zexdoc.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexdoc.com && curl -fsSL -o tests/fixtures/zexall.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexall.com && echo 'Z80 test fixtures downloaded to tests/fixtures/'"
   },
   "devDependencies": {
     "typescript": "^5.0.0",

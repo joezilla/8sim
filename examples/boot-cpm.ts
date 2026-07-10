@@ -21,6 +21,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Cpu8080 } from '../src/cpu/Cpu8080.js';
+import { CpuZ80 } from '../src/cpu/z80/CpuZ80.js';
+import type { ICpu } from '../src/interfaces/ICpu.js';
 import { InterruptController } from '../src/interrupt/InterruptController.js';
 import { Ram } from '../src/memory/Ram.js';
 import { Rom } from '../src/memory/Rom.js';
@@ -124,9 +126,13 @@ async function main(): Promise<void> {
   const dcdd = new MitsDcddCard('dcdd', new NodeWsAdapter(raw));
   dcdd.attach(bus);
 
-  const cpu = new Cpu8080(bus, pic);
+  // CPU selection: 8080 (default) or Z80. Both share the (bus, pic) constructor
+  // and satisfy ICpu, so MachineRunner drives either unchanged. Stock Altair
+  // CP/M is 8080-compatible, so it boots on the Z80 as well.
+  const cpuType = (process.env.CPU ?? '8080').trim().toLowerCase();
+  const cpu: ICpu = cpuType === 'z80' ? new CpuZ80(bus, pic) : new Cpu8080(bus, pic);
   cpu.reset();
-  cpu.registers.pc = 0xff00;
+  cpu.pc = 0xff00;
 
   // --- Wire the 8251 console to this terminal ------------------------------
   // TX (CP/M -> screen)
@@ -153,7 +159,8 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => shutdown('[emulator halted]'));
 
   const speedLabel = SPEED === 'max' ? 'max speed' : `${(SPEED / 1_000_000).toFixed(SPEED % 1_000_000 ? 3 : 0)} MHz`;
-  process.stdout.write(`Booting CP/M from fdcplus-web at ${speedLabel}...  (Ctrl-] to quit)\r\n`);
+  const cpuLabel = cpuType === 'z80' ? 'Z80' : '8080';
+  process.stdout.write(`Booting CP/M (${cpuLabel}) from fdcplus-web at ${speedLabel}...  (Ctrl-] to quit)\r\n`);
 
   // --- Run at the configured speed, yielding so WS I/O + timers advance ----
   const runner = new MachineRunner(cpu, {

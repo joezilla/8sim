@@ -1,6 +1,6 @@
-# 8sim — Intel 8080 CPU Simulator
+# 8sim — Intel 8080 / Zilog Z80 CPU Simulator
 
-A modular, extensible Intel 8080 CPU simulator written in TypeScript. The CPU core is cleanly separated from memory, I/O, and bus peripherals behind well-defined interfaces, making every component independently testable and swappable.
+A modular, extensible Intel 8080 **and** Zilog Z80 CPU simulator written in TypeScript. The CPU core is cleanly separated from memory, I/O, and bus peripherals behind well-defined interfaces, making every component independently testable and swappable — including the CPU itself, which is pluggable between the 8080 and a full Z80.
 
 Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 
@@ -9,6 +9,7 @@ Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 ## Features
 
 - Complete Intel 8080 instruction set
+- **Pluggable CPU**: full Zilog Z80 core alongside the 8080 (validated against ZEXDOC + ZEXALL)
 - Pluggable bus architecture (S-100 bus style)
 - Memory-mapped I/O support
 - Interrupt controller with RST vector dispatch
@@ -171,6 +172,51 @@ cpu.inte = true;
 **EI/DI behaviour:**
 - `EI` sets `pendingEI=true`. Interrupts become enabled at the *start* of the next `step()` call (before the next instruction is fetched), matching real 8080 behaviour where one instruction executes after EI before interrupts are accepted.
 - `DI` clears `inte` and `pendingEI` immediately.
+
+---
+
+## Z80 CPU
+
+`CpuZ80` (`src/cpu/z80/`) is a second, fully-implemented CPU core that runs on the
+same bus, memory, I/O, and interrupt infrastructure. It covers the complete
+documented **and** undocumented instruction set — CB/DD/ED/FD/DDCB/FDCB prefixes,
+the `IXH/IXL/IYH/IYL` and `SLL` opcodes, the DDCB result-copy variants, and the
+undocumented X/Y flags (with MEMPTR/WZ modeling). Correctness is validated against
+the standard **ZEXDOC** and **ZEXALL** exercisers.
+
+```ts
+import { CpuZ80, Bus, Ram, InterruptController } from './src/index.js';
+
+const pic = new InterruptController();
+const bus = new Bus(pic);
+bus.attachMemory(new Ram('ram', 0, 0x10000));
+const cpu = new CpuZ80(bus, pic);   // same (bus, pic) constructor as Cpu8080
+cpu.step();                          // returns T-states
+```
+
+Both cores implement the lightweight `ICpu` interface (`step/reset/run/halted/pc`)
+and share the `(bus, pic)` constructor, so `MachineRunner` drives either without
+changes. `examples/boot-cpm.ts` selects the core via the `CPU` env var
+(`CPU=z80 npm run boot:cpm`); stock Altair CP/M is 8080-compatible and boots on
+the Z80 unchanged.
+
+**Extras beyond the 8080:** shadow registers (`EXX`, `EX AF,AF'`), `IX/IY` index
+registers with displacement, block transfer/search/I-O ops (`LDIR`, `CPIR`,
+`OTIR`, …), interrupt modes `IM 0/1/2` with `IFF1/IFF2`, and non-maskable
+interrupts (`cpu.triggerNMI()`). The flags byte layout is `S Z Y H X PV N C`.
+
+### Z80 validation ROMs
+
+```bash
+npm run fixtures:z80    # downloads prelim/zexdoc/zexall into tests/fixtures/
+```
+
+`prelim.com` runs as part of the normal test suite (~1s). The exhaustive
+`zexdoc`/`zexall` exercisers take minutes and are gated:
+
+```bash
+Z80_ZEX=1 npx vitest run tests/integration/z80-zex.test.ts
+```
 
 ---
 
