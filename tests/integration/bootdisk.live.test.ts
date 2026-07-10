@@ -30,9 +30,11 @@ import type { WebSocketLike } from '../../src/cards/FdcPlusClient.js';
  *
  * Run:  npx vitest run tests/integration/bootdisk.live.test.ts
  */
-const KEY = '6b69abdee3039a9acbf9035d8fc75cbcf3050818ab334066ca4ca0773c9d1d8c';
-const BASE = 'http://localhost:3000';
-const WSURL = `ws://localhost:3000/fdc-ws?token=${KEY}`;
+// Server location and API token come from the environment (see .env.example).
+// The test skips when the token is unset or the server is unreachable.
+const KEY = process.env.FDCPLUS_TOKEN ?? '';
+const BASE = process.env.FDCPLUS_URL ?? 'http://localhost:3000';
+const WSURL = `${BASE.replace(/^http/, 'ws')}/fdc-ws?token=${KEY}`;
 const AUTH = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
 /** Adapt Node's built-in WebSocket to the card's WebSocketLike interface. */
@@ -65,8 +67,12 @@ async function serverReachable(): Promise<boolean> {
 
 describe('LIVE 88-DSK boot over fdcplus-web WebSocket', () => {
   it('boots CP/M from the mounted disk image', async () => {
+    if (!KEY) {
+      console.warn('FDCPLUS_TOKEN not set — skipping live boot test (see .env.example)');
+      return;
+    }
     if (!(await serverReachable())) {
-      console.warn('fdcplus-web not reachable on :3000 — skipping live boot test');
+      console.warn(`fdcplus-web not reachable at ${BASE} — skipping live boot test`);
       return;
     }
 
