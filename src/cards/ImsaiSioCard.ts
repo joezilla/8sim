@@ -2,6 +2,7 @@ import type { IS100Card } from '../interfaces/IS100Card.js';
 import type { IIODevice } from '../interfaces/IIODevice.js';
 import type { Bus } from '../bus/Bus.js';
 import { Usart8251 } from './Usart8251.js';
+import { writeHostStdout } from '../util/hostConsole.js';
 
 export interface SioCardOptions {
   readonly basePortA?: number;
@@ -53,7 +54,7 @@ export class ImsaiSioCard implements IS100Card {
   }
 
   wireToConsole(): void {
-    const write = (byte: number) => process.stdout.write(String.fromCharCode(byte));
+    const write = (byte: number) => writeHostStdout(String.fromCharCode(byte));
     this.channelA.onTransmit(write);
     this.channelB.onTransmit(write);
   }

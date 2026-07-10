@@ -2,6 +2,7 @@ import type { IS100Card } from '../interfaces/IS100Card.js';
 import type { Bus } from '../bus/Bus.js';
 import { Tr1602Uart } from './Tr1602Uart.js';
 import { Port8212 } from './Port8212.js';
+import { writeHostStdout } from '../util/hostConsole.js';
 
 export interface MioCardOptions {
   readonly basePort?: number; // default 0x10 → serial at 0x12/0x13
@@ -46,7 +47,7 @@ export class ImsaiMioCard implements IS100Card {
   }
 
   wireToConsole(): void {
-    this.uart.onTransmit((byte) => process.stdout.write(String.fromCharCode(byte & 0x7f)));
+    this.uart.onTransmit((byte) => writeHostStdout(String.fromCharCode(byte & 0x7f)));
   }
 
   reset(): void {

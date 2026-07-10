@@ -1,6 +1,7 @@
 import type { IS100Card } from '../interfaces/IS100Card.js';
 import type { Bus } from '../bus/Bus.js';
 import { Mc6850Acia } from './Mc6850Acia.js';
+import { writeHostStdout } from '../util/hostConsole.js';
 
 export interface Sio2CardOptions {
   readonly basePort?: number; // default 0x10 (standard MITS base)
@@ -35,7 +36,7 @@ export class Mits2SioCard implements IS100Card {
   }
 
   wireToConsole(): void {
-    this.port0.onTransmit((byte) => process.stdout.write(String.fromCharCode(byte & 0x7f)));
+    this.port0.onTransmit((byte) => writeHostStdout(String.fromCharCode(byte & 0x7f)));
   }
 
   reset(): void {
