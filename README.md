@@ -271,6 +271,33 @@ If the fixture is absent the test is silently skipped.
 
 ---
 
+## Examples: Interactive CP/M Boot
+
+`examples/boot-cpm.ts` boots CP/M on the emulated 8080 (88-DSK boot PROM + 8251 console + MITS 88-DCDD floppy controller) against a live fdcplus-web server, bridging the console to your terminal for a real interactive session.
+
+The server location and API token are **not** hardcoded — they are read from environment variables, loaded from a local `.env` file:
+
+| Variable | Description | Default |
+|---|---|---|
+| `FDCPLUS_URL` | Base URL of the fdcplus-web server | `http://localhost:3000` |
+| `FDCPLUS_TOKEN` | API token for the fdcplus-web server | *(required)* |
+| `FDCPLUS_CLIENT_ID` | Stable client id for persistent disk writes | *(unset — writes are ephemeral)* |
+
+Note on disk writes: fdcplus-web sessions are copy-on-write — writes go to a per-client "splinter", not the master disk image. Without `FDCPLUS_CLIENT_ID`, the splinter (and any files you saved) is discarded when the emulator disconnects. With a stable id, your changes persist across sessions; merge them into the master image via the server's `POST /api/drives/:id/transient/commit` endpoint.
+
+Setup:
+
+1. Copy the template: `cp .env.example .env`
+2. Edit `.env` and set `FDCPLUS_TOKEN` (and `FDCPLUS_URL` if the server isn't on localhost)
+3. Start the fdcplus-web server with a bootable disk mounted on drive 0
+4. Run `npm run boot:cpm`
+
+The `.env` file is gitignored so your token is never committed. The npm script loads it via Node's built-in `--env-file-if-exists` flag (requires Node ≥ 22), so no dotenv dependency is needed. Type at the `A>` prompt; press `Ctrl-]` to quit. Disk writes are flushed back to the mounted image on the server.
+
+The live boot integration test (`tests/integration/bootdisk.live.test.ts`) uses the same variables; the vitest config loads `.env` automatically. The test skips itself when `FDCPLUS_TOKEN` is unset or the server is unreachable.
+
+---
+
 ## Browser Usage
 
 Build a single-file ESM bundle:

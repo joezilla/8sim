@@ -7,8 +7,9 @@
  * bridges the 8251 console to this process's stdin/stdout so you get a real
  * interactive CP/M session. Type at the A> prompt; Ctrl-] quits the emulator.
  *
- * Requires the fdcplus-web server running on :3000 with a bootable disk mounted
- * on drive 0.
+ * Requires a running fdcplus-web server with a bootable disk mounted on
+ * drive 0. The server URL and API token are read from FDCPLUS_URL and
+ * FDCPLUS_TOKEN (loaded from a .env file — see .env.example and README).
  *
  *   npm run boot:cpm
  *
@@ -26,9 +27,21 @@ import { ImsaiSioCard } from '../src/cards/ImsaiSioCard.js';
 import { MitsDcddCard } from '../src/cards/MitsDcddCard.js';
 import type { WebSocketLike } from '../src/cards/FdcPlusClient.js';
 
-const KEY = 'eb08cd6bc2bc8888207bb71ce90b04fa8251d415ae223530f9d403ea54be68fd';
-const BASE = 'http://10.1.1.94:3000';
-const WSURL = `ws://10.1.1.94:3000/fdc-ws?token=${KEY}`;
+// Server location and API token come from the environment (see .env.example).
+const KEY = process.env.FDCPLUS_TOKEN;
+const BASE = process.env.FDCPLUS_URL ?? 'http://localhost:3000';
+if (!KEY) {
+  console.error('FDCPLUS_TOKEN is not set. Copy .env.example to .env and fill in your fdcplus-web API token.');
+  process.exit(1);
+}
+// fdcplus-web sessions are copy-on-write: disk writes land in a per-client
+// "splinter", not the master image. Anonymous splinters vanish with the
+// connection — set FDCPLUS_CLIENT_ID to a stable name so yours persists
+// across sessions (commit it to the master via the server's
+// /api/drives/:id/transient/commit endpoint when desired).
+const CLIENT_ID = process.env.FDCPLUS_CLIENT_ID;
+const WSURL = `${BASE.replace(/^http/, 'ws')}/fdc-ws?token=${KEY}` +
+  (CLIENT_ID ? `&clientId=${encodeURIComponent(CLIENT_ID)}` : '');
 const AUTH = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
 /** Adapt Node's built-in WebSocket to the card's WebSocketLike interface. */
@@ -66,7 +79,7 @@ async function main(): Promise<void> {
     const r = await fetch(`${BASE}/api/drives`, { headers: AUTH, signal: AbortSignal.timeout(2000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
   } catch {
-    console.error('fdcplus-web not reachable on :3000 — start the server and mount a disk on drive 0.');
+    console.error(`fdcplus-web not reachable at ${BASE} — start the server and mount a disk on drive 0.`);
     process.exit(1);
   }
 

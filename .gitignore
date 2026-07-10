@@ -3,6 +3,9 @@ dist/
 *.js.map
 .DS_Store
 
+# Local environment (secrets) — see .env.example
+.env
+
 # Build artifacts / backups
 *.tgz
 
