@@ -33,6 +33,10 @@ export { InterruptController } from './interrupt/InterruptController.js';
 export { ImmediateClock } from './clock/ImmediateClock.js';
 export { SystemClock } from './clock/SystemClock.js';
 
+// Machine
+export { MachineRunner } from './machine/MachineRunner.js';
+export type { MachineRunnerOptions, CpuSpeed, ISteppable } from './machine/MachineRunner.js';
+
 // Cards
 export { Usart8251 } from './cards/Usart8251.js';
 export { ImsaiSioCard } from './cards/ImsaiSioCard.js';

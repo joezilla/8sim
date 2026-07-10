@@ -10,6 +10,8 @@
  * Requires a running fdcplus-web server with a bootable disk mounted on
  * drive 0. The server URL and API token are read from FDCPLUS_URL and
  * FDCPLUS_TOKEN (loaded from a .env file — see .env.example and README).
+ * The CPU runs at an authentic 2 MHz by default; set CPU_HZ=4mhz or
+ * CPU_HZ=max (or a raw Hz number) to change it.
  *
  *   npm run boot:cpm
  *
@@ -25,6 +27,7 @@ import { Rom } from '../src/memory/Rom.js';
 import { Bus } from '../src/bus/Bus.js';
 import { ImsaiSioCard } from '../src/cards/ImsaiSioCard.js';
 import { MitsDcddCard } from '../src/cards/MitsDcddCard.js';
+import { MachineRunner, type CpuSpeed } from '../src/machine/MachineRunner.js';
 import type { WebSocketLike } from '../src/cards/FdcPlusClient.js';
 
 // Server location and API token come from the environment (see .env.example).
@@ -43,6 +46,19 @@ const CLIENT_ID = process.env.FDCPLUS_CLIENT_ID;
 const WSURL = `${BASE.replace(/^http/, 'ws')}/fdc-ws?token=${KEY}` +
   (CLIENT_ID ? `&clientId=${encodeURIComponent(CLIENT_ID)}` : '');
 const AUTH = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
+
+// CPU speed: "2mhz" (default, stock 8080), "4mhz", "max", or a raw Hz number.
+function parseSpeed(s: string): CpuSpeed {
+  const v = s.trim().toLowerCase();
+  if (v === 'max' || v === 'full') return 'max';
+  const mhz = v.match(/^(\d+(?:\.\d+)?)\s*mhz$/);
+  if (mhz) return Math.round(parseFloat(mhz[1]!) * 1_000_000);
+  const hz = Number(v);
+  if (Number.isFinite(hz) && hz > 0) return hz;
+  console.error(`Unrecognized CPU_HZ "${s}" — use e.g. 2mhz, 4mhz, 2000000, or max.`);
+  process.exit(1);
+}
+const SPEED = parseSpeed(process.env.CPU_HZ ?? '2mhz');
 
 /** Adapt Node's built-in WebSocket to the card's WebSocketLike interface. */
 class NodeWsAdapter implements WebSocketLike {
@@ -136,20 +152,17 @@ async function main(): Promise<void> {
   });
   process.on('SIGINT', () => shutdown('[emulator halted]'));
 
-  process.stdout.write('Booting CP/M from fdcplus-web...  (Ctrl-] to quit)\r\n');
+  const speedLabel = SPEED === 'max' ? 'max speed' : `${(SPEED / 1_000_000).toFixed(SPEED % 1_000_000 ? 3 : 0)} MHz`;
+  process.stdout.write(`Booting CP/M from fdcplus-web at ${speedLabel}...  (Ctrl-] to quit)\r\n`);
 
-  // --- Run, yielding to the event loop so WS I/O + timers advance ----------
-  const BATCH = 40_000;
-  const loop = () => {
-    try {
-      for (let i = 0; i < BATCH; i++) cpu.step();
-    } catch (e) {
-      shutdown(`[cpu error: ${String(e)}]`);
-      return;
-    }
-    setImmediate(loop);
-  };
-  loop();
+  // --- Run at the configured speed, yielding so WS I/O + timers advance ----
+  const runner = new MachineRunner(cpu, {
+    hz: SPEED,
+    // setImmediate yields faster than setTimeout(0) for 'max' throughput.
+    schedule: (fn, ms) => { if (ms > 0) setTimeout(fn, ms); else setImmediate(fn); },
+    onError: (e) => shutdown(`[cpu error: ${String(e)}]`),
+  });
+  runner.start();
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
