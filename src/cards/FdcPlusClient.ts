@@ -17,6 +17,12 @@ export class FdcPlusClient {
   private rxBuf:   Uint8Array[] = [];
   private rxTotal  = 0;
   private pending: PendingEntry[] = [];
+  // Wire mutex. The protocol is strictly request/response, and WRIT is a
+  // multi-frame exchange (header → ack → raw data → status): any frame another
+  // op sends mid-exchange is consumed by the server as track data, and the
+  // tail of the real payload spills out as garbage commands, permanently
+  // desyncing the stream. Null when the wire is idle.
+  private chainTail: Promise<void> | null = null;
 
   constructor(private readonly ws: WebSocketLike) {
     ws.onmessage = (ev) => {
@@ -32,29 +38,49 @@ export class FdcPlusClient {
   }
 
   stat(drive: number, headLoad: boolean, track: number): Promise<number> {
-    const p1 = ((headLoad ? 1 : 0) << 8) | (drive & 0xff);
-    this.ws.send(this.makeCmd('STAT', p1, track & 0xffff));
-    return this.enqueue(8).then(buf => this.parseCmd(buf).p2);
+    return this.exchange(() => {
+      const p1 = ((headLoad ? 1 : 0) << 8) | (drive & 0xff);
+      this.ws.send(this.makeCmd('STAT', p1, track & 0xffff));
+      return this.enqueue(8).then(buf => this.parseCmd(buf).p2);
+    });
   }
 
   readTrack(drive: number, track: number, length: number): Promise<Uint8Array> {
-    const p1 = ((drive & 0xf) << 12) | (track & 0xfff);
-    this.ws.send(this.makeCmd('READ', p1, length));
-    return this.enqueue(length);
+    return this.exchange(() => {
+      const p1 = ((drive & 0xf) << 12) | (track & 0xfff);
+      this.ws.send(this.makeCmd('READ', p1, length));
+      return this.enqueue(length);
+    });
   }
 
   writeTrack(drive: number, track: number, data: Uint8Array): Promise<void> {
-    const p1 = ((drive & 0xf) << 12) | (track & 0xfff);
-    this.ws.send(this.makeCmd('WRIT', p1, data.length));
-    return this.enqueue(8).then(ackBuf => {
-      const ack = this.parseCmd(ackBuf);
-      if (ack.p1 !== 0) throw new Error(`WRIT rejected: status ${ack.p1}`);
-      this.ws.send(data);
-      return this.enqueue(8).then(wstaBuf => {
-        const wsta = this.parseCmd(wstaBuf);
-        if (wsta.p1 !== 0) throw new Error(`WSTA error: status ${wsta.p1}`);
+    return this.exchange(() => {
+      const p1 = ((drive & 0xf) << 12) | (track & 0xfff);
+      this.ws.send(this.makeCmd('WRIT', p1, data.length));
+      return this.enqueue(8).then(ackBuf => {
+        const ack = this.parseCmd(ackBuf);
+        if (ack.p1 !== 0) throw new Error(`WRIT rejected: status ${ack.p1}`);
+        this.ws.send(data);
+        return this.enqueue(8).then(wstaBuf => {
+          const wsta = this.parseCmd(wstaBuf);
+          if (wsta.p1 !== 0) throw new Error(`WSTA error: status ${wsta.p1}`);
+        });
       });
     });
+  }
+
+  /**
+   * Run one full request/response exchange with exclusive use of the wire.
+   * Starts synchronously when the wire is idle (device registers depend on the
+   * command going out on the same tick); queues behind the in-flight exchange
+   * otherwise. A failed exchange never blocks the queue.
+   */
+  private exchange<T>(op: () => Promise<T>): Promise<T> {
+    const run = this.chainTail ? this.chainTail.then(op, op) : op();
+    const tail = run.then(() => undefined, () => undefined);
+    this.chainTail = tail;
+    void tail.then(() => { if (this.chainTail === tail) this.chainTail = null; });
+    return run;
   }
 
   private makeCmd(mnemonic: string, p1: number, p2: number): Uint8Array {

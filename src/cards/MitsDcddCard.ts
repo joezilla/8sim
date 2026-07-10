@@ -21,16 +21,30 @@ export class MitsDcddCard implements IS100Card, IIODevice {
   private readonly p3: number;
 
   private selectedDrive = 0xFF;
-  private currentTrack  = 0;
+  // Head position is PER-DRIVE state: each drive's arm stays where it was
+  // left. The BIOS seeks relatively from a per-drive track table in RAM, so a
+  // single shared counter desyncs the moment two drives interleave seeks
+  // (e.g. PIP copying between disks) and lands reads/writes on wrong tracks.
+  private readonly driveTrack: number[] = new Array(16).fill(0);
   private headLoaded    = false;
   private writeEnabled  = false;
   private fetchPending  = false;
   private trackData:    Uint8Array | null = null;
   private writeBuffer:  Uint8Array | null = null;
+  private writtenSectors = new Set<number>(); // sectors touched since Write Enable
   private writeDirty    = false;
   private lastSector    = -1;
   private byteInSector  = 0;
   private cacheDrive    = 0xFF; // which drive the cached trackData belongs to
+
+  /** Head position of the currently selected drive (0 when none selected). */
+  private get currentTrack(): number {
+    return this.selectedDrive === 0xFF ? 0 : (this.driveTrack[this.selectedDrive] ?? 0);
+  }
+
+  private set currentTrack(track: number) {
+    if (this.selectedDrive !== 0xFF) this.driveTrack[this.selectedDrive] = track;
+  }
 
   constructor(id: string, ws: WebSocketLike, options: DcddOptions = {}) {
     this.id = id;
@@ -62,12 +76,13 @@ export class MitsDcddCard implements IS100Card, IIODevice {
   reset(): void {
     this.flushWrite();
     this.selectedDrive = 0xFF;
-    this.currentTrack  = 0;
+    this.driveTrack.fill(0);
     this.headLoaded    = false;
     this.writeEnabled  = false;
     this.fetchPending  = false;
     this.trackData     = null;
     this.writeBuffer   = null;
+    this.writtenSectors.clear();
     this.writeDirty    = false;
     this.lastSector    = -1;
     this.byteInSector  = 0;
@@ -108,6 +123,9 @@ export class MitsDcddCard implements IS100Card, IIODevice {
       return;
     }
     const drive = value & 0x0F;
+    // A dirty write buffer belongs to the drive we're switching away from —
+    // flush it before the selection changes, or it lands on the new drive.
+    if (drive !== this.selectedDrive) this.flushWrite();
     this.selectedDrive = drive;
     // Selecting a different drive invalidates the cached track (different disk).
     if (drive !== this.cacheDrive) {
@@ -128,22 +146,30 @@ export class MitsDcddCard implements IS100Card, IIODevice {
     const sector = Math.floor(pos / secMs) & 0x1F;
     const offset = pos % secMs;
 
-    if (sector !== this.lastSector) {
+    // Sector True (bit 0) pulses LOW for first 1 ms of each sector window
+    const sectorTrue = offset < 1.0 ? 0 : 1;
+
+    if (sector !== this.lastSector || sectorTrue === 0) {
+      // New sector under the head, or the start-of-sector pulse. Sector True
+      // marks the beginning of the sector: software that samples it here (the
+      // BIOS waits for it before every transfer) expects the byte stream to
+      // start at byte 0 — even when re-targeting the sector it just finished,
+      // where the sector number alone wouldn't change.
       this.lastSector   = sector;
       this.byteInSector = 0;
     }
-
-    // Sector True (bit 0) pulses LOW for first 1 ms of each sector window
-    const sectorTrue = offset < 1.0 ? 0 : 1;
     return 0xC0 | ((sector & 0x1F) << 1) | sectorTrue;
   }
 
   private writeCommand(value: number): void {
     // Process all command bits; multiple may be set simultaneously
     if ((value & 0x80) !== 0) { // Write Enable
+      // The BIOS issues Write Enable once per sector write. On real hardware
+      // each sector hits the disk immediately; here writes accumulate in the
+      // track buffer until flush, so Write Enable must NOT discard sectors
+      // buffered by earlier enables — only ensure a buffer exists.
       this.writeEnabled = true;
-      this.writeBuffer  = new Uint8Array(TRACK_LEN);
-      this.writeDirty   = false;
+      if (!this.writeBuffer) this.writeBuffer = new Uint8Array(TRACK_LEN);
     }
     if ((value & 0x08) !== 0) { // Head Unload
       this.flushWrite();
@@ -162,23 +188,36 @@ export class MitsDcddCard implements IS100Card, IIODevice {
 
   private readData(): number {
     if (!this.headLoaded || !this.trackData || this.fetchPending) return 0xff;
+    // Past the 137th byte the head is over the inter-sector gap — nothing to
+    // read until the sector counter advances (which resets byteInSector).
+    if (this.byteInSector >= BYTES_PER_SECTOR) return 0xff;
     const sector = this.lastSector < 0 ? 0 : this.lastSector;
     const offset = sector * BYTES_PER_SECTOR + this.byteInSector;
-    if (offset >= this.trackData.length) return 0xff;
-    const byte = this.trackData[offset] ?? 0xff;
-    this.byteInSector = (this.byteInSector + 1) % BYTES_PER_SECTOR;
+    // A sector rewritten since Write Enable reads back its new contents.
+    const source = (this.writeBuffer && this.writtenSectors.has(sector))
+      ? this.writeBuffer
+      : this.trackData;
+    if (offset >= source.length) return 0xff;
+    const byte = source[offset] ?? 0xff;
+    this.byteInSector++;
     return byte;
   }
 
   private writeData(value: number): void {
     if (!this.writeEnabled || !this.writeBuffer) return;
+    // The BIOS pads its 137-byte sector burst with trailing bytes; on real
+    // hardware they land in the inter-sector gap. Discard them — wrapping
+    // around would overwrite the start of the sector (the track-marker byte),
+    // corrupting it.
+    if (this.byteInSector >= BYTES_PER_SECTOR) return;
     const sector = this.lastSector < 0 ? 0 : this.lastSector;
     const offset = sector * BYTES_PER_SECTOR + this.byteInSector;
     if (offset < this.writeBuffer.length) {
       this.writeBuffer[offset] = value & 0xff;
+      this.writtenSectors.add(sector);
       this.writeDirty = true;
     }
-    this.byteInSector = (this.byteInSector + 1) % BYTES_PER_SECTOR;
+    this.byteInSector++;
   }
 
   // --- Private helpers ---
@@ -205,8 +244,10 @@ export class MitsDcddCard implements IS100Card, IIODevice {
       .then((data) => {
         // Only install the data if the head hasn't moved (and the same drive is
         // still selected) since the fetch began — otherwise it belongs to a
-        // track we're no longer over and would corrupt the next read.
-        if (track === this.currentTrack && drive === this.selectedDrive) {
+        // track we're no longer over and would corrupt the next read. A cache
+        // that appeared meanwhile is a flushed write image, which is fresher
+        // than what we just fetched — keep it.
+        if (track === this.currentTrack && drive === this.selectedDrive && !this.trackData) {
           this.trackData = data;
           this.cacheDrive = drive;
         }
@@ -221,19 +262,34 @@ export class MitsDcddCard implements IS100Card, IIODevice {
 
   private flushWrite(): void {
     if (!this.writeDirty || !this.writeBuffer || this.selectedDrive === 0xFF) return;
-    const data  = this.writeBuffer;
+    // WRIT replaces the whole track on the server, but the program only wrote
+    // some sectors — merge those over the cached track image so the rest keep
+    // their contents.
+    const image = this.trackData ? new Uint8Array(this.trackData) : new Uint8Array(TRACK_LEN);
+    for (const sector of this.writtenSectors) {
+      const off = sector * BYTES_PER_SECTOR;
+      image.set(this.writeBuffer.subarray(off, off + BYTES_PER_SECTOR), off);
+    }
     const drive = this.selectedDrive;
     const track = this.currentTrack;
     this.writeBuffer  = null;
+    this.writtenSectors.clear();
     this.writeDirty   = false;
     this.writeEnabled = false;
-    this.fdcClient.writeTrack(drive, track, data).catch(() => {});
+    // The merged image is now the freshest copy of the track — reads must see
+    // the written data, not the pre-write cache.
+    this.trackData  = image;
+    this.cacheDrive = drive;
+    this.fdcClient.writeTrack(drive, track, image).catch((e) => {
+      console.error(`[${this.id}] track write failed (drive ${drive}, track ${track}): ${String(e)}`);
+    });
   }
 
   private issueStep(dir: 'in' | 'out'): void {
     // Seeks are instantaneous in emulation. A real-time settle delay would
     // desync from the emulated CPU (which the software paces itself), and
     // dropping "too-fast" step pulses would lose track position entirely.
+    this.flushWrite(); // a dirty buffer belongs to the track we're leaving
     if (dir === 'in')  this.currentTrack = Math.min(MAX_TRACK, this.currentTrack + 1);
     else               this.currentTrack = Math.max(0, this.currentTrack - 1);
     this.trackData    = null; // head moved; cached track is no longer under it

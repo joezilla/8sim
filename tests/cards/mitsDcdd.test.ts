@@ -43,9 +43,11 @@ function makeResponse(mnemonic: string, p1: number, p2: number): Uint8Array {
   return buf;
 }
 
-// Drain microtasks (Promises, .then(), .finally()) without advancing fake timers
+// Drain microtasks (Promises, .then(), .finally()) without advancing fake timers.
+// Exchanges are serialized on the wire, so a queued command resolves through a
+// deeper chain of continuations than before — drain generously.
 async function flushMicrotasks(): Promise<void> {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
+  for (let i = 0; i < 20; i++) await Promise.resolve();
 }
 
 // ── FdcPlusClient ─────────────────────────────────────────────────────────────
@@ -150,6 +152,51 @@ describe('FdcPlusClient — WRIT', () => {
     await flushMicrotasks();
     ws.inject(makeResponse('WSTA', 0x03, 0)); // WRITE_ERR
     await expect(p).rejects.toThrow('WSTA error');
+  });
+});
+
+describe('FdcPlusClient — wire serialization', () => {
+  it('holds commands issued during an in-flight WRIT exchange until it completes', async () => {
+    // Regression: WRIT is multi-frame (header → ack → raw data → WSTA). A STAT
+    // or READ sent between the header and the payload is consumed by the server
+    // as track data, and the payload's tail spills out as garbage commands
+    // ("Unknown command: \0\0\0\0"), permanently desyncing the stream.
+    const ws = new MockWs();
+    const client = new FdcPlusClient(ws);
+    const wp = client.writeTrack(0, 5, new Uint8Array(4384).fill(0x5A));
+    const sp = client.stat(0, true, 5);      // issued mid-exchange
+    const rp = client.readTrack(0, 5, 8);    // issued mid-exchange
+    expect(ws.sent.length).toBe(1);          // only the WRIT header is out
+
+    ws.inject(makeResponse('WRIT', 0x00, 0));
+    await flushMicrotasks();
+    expect(ws.sent.length).toBe(2);          // header + payload, nothing interleaved
+    expect(ws.sent[1]!.length).toBe(4384);
+
+    ws.inject(makeResponse('WSTA', 0x00, 0));
+    await wp;
+    await flushMicrotasks();
+    expect(parseMnemonic(ws.sent[2]!)).toBe('STAT'); // released in order
+    ws.inject(makeResponse('STAT', 0x00, 0x01));
+    expect(await sp).toBe(1);
+
+    await flushMicrotasks();
+    expect(parseMnemonic(ws.sent[3]!)).toBe('READ');
+    ws.inject(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]));
+    expect((await rp)[0]).toBe(1);
+  });
+
+  it('a failed exchange does not block the queue', async () => {
+    const ws = new MockWs();
+    const client = new FdcPlusClient(ws);
+    const wp = client.writeTrack(0, 0, new Uint8Array(4384));
+    const sp = client.stat(0, false, 0);
+    ws.inject(makeResponse('WRIT', 0x01, 0)); // NOT_READY → writeTrack rejects
+    await expect(wp).rejects.toThrow('WRIT rejected');
+    await flushMicrotasks();
+    expect(parseMnemonic(ws.lastSent())).toBe('STAT'); // queue moved on
+    ws.inject(makeResponse('STAT', 0x00, 0x02));
+    expect(await sp).toBe(2);
   });
 });
 
@@ -278,11 +325,14 @@ describe('MitsDcddCard — drive select (port 1 write)', () => {
 // ── MitsDcddCard — head load + fetch ─────────────────────────────────────────
 
 describe('MitsDcddCard — head load and track fetch', () => {
-  it('head load issues READ command to fdcplus-web', () => {
+  it('head load issues READ command to fdcplus-web', async () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
     card.ioWrite(0x08, 0x00); // select drive 0 (sends STAT)
-    card.ioWrite(0x09, 0x04); // head load (sends READ)
+    card.ioWrite(0x09, 0x04); // head load (queues READ behind the STAT exchange)
+    expect(ws.sent.length).toBe(1); // wire is serialized: READ waits for STAT reply
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    await flushMicrotasks();
     // ws.sent[0] = STAT, ws.sent[1] = READ
     expect(parseMnemonic(ws.sent[1]!)).toBe('READ');
     expect(parseP1(ws.sent[1]!)).toBe(0x0000); // drive=0, track=0
@@ -456,6 +506,60 @@ describe('MitsDcddCard — step commands', () => {
   });
 });
 
+// ── MitsDcddCard — per-drive head position ───────────────────────────────────
+
+describe('MitsDcddCard — per-drive head position', () => {
+  // Regression: head position is per-drive state (each drive's arm stays where
+  // it was left). A single shared track counter desyncs as soon as two drives
+  // interleave seeks — the BIOS steps relative to its per-drive track table,
+  // lands on the wrong physical track, and every access fails with Bad Sector
+  // (first seen with PIP copying a file between two disks).
+
+  it('each drive keeps its own track position across drive switches', async () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+
+    card.ioWrite(0x08, 0x00); // select drive 0
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    await flushMicrotasks();
+    card.ioWrite(0x09, 0x01); // Step In ×2 → drive 0 at track 2
+    card.ioWrite(0x09, 0x01);
+    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // not at track 0
+
+    card.ioWrite(0x08, 0x01); // select drive 1
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    await flushMicrotasks();
+    expect(card.ioRead(0x08) & 0x40).toBe(0x00); // drive 1 has ITS OWN arm — at track 0
+    for (let i = 0; i < 5; i++) card.ioWrite(0x09, 0x01); // drive 1 → track 5
+
+    card.ioWrite(0x08, 0x00); // back to drive 0
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    await flushMicrotasks();
+    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // still off track 0
+    card.ioWrite(0x09, 0x04); // head load → fetch drive 0's track
+    await flushMicrotasks();
+    const read = ws.sent[ws.sent.length - 1]!;
+    expect(parseMnemonic(read)).toBe('READ');
+    expect(parseP1(read)).toBe((0 << 12) | 2); // drive 0, track 2 — not drive 1's track 5
+  });
+
+  it('switching drives with a dirty write buffer flushes it to the previous drive', async () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00); // select drive 0
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    await flushMicrotasks();
+
+    card.ioWrite(0x09, 0x80); // Write Enable
+    card.ioWrite(0x0A, 0x42); // dirty byte on drive 0, track 0
+    card.ioWrite(0x08, 0x02); // select drive 2 directly (no deselect)
+
+    const writ = ws.sent[1]!;
+    expect(parseMnemonic(writ)).toBe('WRIT');
+    expect(parseP1(writ)).toBe((0 << 12) | 0); // flushed to drive 0, not drive 2
+  });
+});
+
 // ── MitsDcddCard — write flow ─────────────────────────────────────────────────
 
 describe('MitsDcddCard — write flow', () => {
@@ -504,6 +608,100 @@ describe('MitsDcddCard — write flow', () => {
     expect(parseMnemonic(ws.sent[2]!)).toBe('WRIT');
     expect(parseP1(ws.sent[2]!)).toBe(0x0000); // drive=0, track=0
     expect(parseP2(ws.sent[2]!)).toBe(4384);
+  });
+
+  it('flush merges written sectors over the cached track — unwritten sectors keep their contents', async () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00); // select drive 0
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    card.ioWrite(0x09, 0x04); // head load
+    ws.inject(new Uint8Array(4384).fill(0x11)); // whole disk track = 0x11
+    await flushMicrotasks();
+
+    card.ioWrite(0x09, 0x80); // Write Enable
+    // lastSector is -1 on a fresh card → writes land in sector 0
+    for (let i = 0; i < 137; i++) card.ioWrite(0x0A, 0x42); // rewrite sector 0
+
+    // After 137 bytes the head is over the inter-sector gap — reads return 0xff
+    // until the sector counter advances.
+    expect(card.ioRead(0x0A)).toBe(0xff);
+
+    card.ioWrite(0x09, 0x08); // Head Unload → flush
+    expect(parseMnemonic(ws.sent[2]!)).toBe('WRIT');
+    ws.inject(makeResponse('WRIT', 0x00, 0));
+    await flushMicrotasks();
+
+    const payload = ws.sent[3]!;
+    expect(payload.length).toBe(4384);
+    expect(payload[0]).toBe(0x42);   // written sector has new contents
+    expect(payload[136]).toBe(0x42);
+    expect(payload[137]).toBe(0x11); // sector 1 untouched — NOT zeroed
+    expect(payload[4383]).toBe(0x11);
+  });
+
+  it('trailing pad bytes beyond the 137-byte sector fall into the gap, not back onto byte 0', async () => {
+    // Regression: the BIOS writes 138 bytes per sector (137 + a pad byte that
+    // lands in the inter-sector gap on real hardware). Wrapping mod 137 made
+    // the pad byte overwrite the sector's track-marker byte → "Bad Sector".
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00);
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    card.ioWrite(0x09, 0x04);
+    ws.inject(new Uint8Array(4384).fill(0x11));
+    await flushMicrotasks();
+
+    card.ioWrite(0x09, 0x80); // Write Enable
+    card.ioWrite(0x0A, 0x82); // track-marker byte
+    for (let i = 1; i < 137; i++) card.ioWrite(0x0A, 0x42);
+    card.ioWrite(0x0A, 0x00); // 138th byte — BIOS pad
+
+    card.ioWrite(0x09, 0x08); // Head Unload → flush
+    ws.inject(makeResponse('WRIT', 0x00, 0));
+    await flushMicrotasks();
+    expect(ws.sent[3]![0]).toBe(0x82); // marker byte intact, not clobbered by the pad
+  });
+
+  it('a second Write Enable does not discard sectors buffered by the first', async () => {
+    // Regression: the BIOS issues Write Enable once per sector write. Resetting
+    // the buffer on each enable meant only the LAST sector written between
+    // flushes survived — e.g. a SAVE's directory-entry write was discarded by
+    // the following data-sector write and files never appeared on disk.
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00);
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    card.ioWrite(0x09, 0x04); // head load
+    ws.inject(new Uint8Array(4384).fill(0x11));
+    await flushMicrotasks();
+
+    card.ioWrite(0x09, 0x80); // Write Enable #1
+    for (let i = 0; i < 137; i++) card.ioWrite(0x0A, 0x42); // sector 0
+    card.ioWrite(0x09, 0x80); // Write Enable #2 (next sector write begins)
+
+    card.ioWrite(0x09, 0x08); // Head Unload → flush
+    ws.inject(makeResponse('WRIT', 0x00, 0));
+    await flushMicrotasks();
+    const payload = ws.sent[3]!;
+    expect(payload[0]).toBe(0x42); // sector 0 from enable #1 survived
+    expect(payload[136]).toBe(0x42);
+  });
+
+  it('a step with a dirty write buffer flushes it to the track being left', async () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00);
+    ws.inject(makeResponse('STAT', 0, 0x01));
+    card.ioWrite(0x09, 0x04); // head load → fetch track 0
+    ws.inject(new Uint8Array(4384));
+    await flushMicrotasks();
+
+    card.ioWrite(0x09, 0x80); // Write Enable
+    card.ioWrite(0x0A, 0x99); // dirty
+    card.ioWrite(0x09, 0x01); // Step In → must flush to track 0 first
+    expect(parseMnemonic(ws.sent[2]!)).toBe('WRIT');
+    expect(parseP1(ws.sent[2]!)).toBe(0x0000); // drive=0, TRACK 0 — not track 1
   });
 
   it('drive deselect with dirty write buffer flushes via WRIT', async () => {
