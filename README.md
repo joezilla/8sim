@@ -174,7 +174,26 @@ cpu.inte = true;
 
 ---
 
-## Clocks
+## Clocks & CPU Speed
+
+### `MachineRunner`
+
+The recommended way to run a machine in real time. Drives `cpu.step()` at a configurable speed — an authentic **2 MHz by default** — pacing simulated T-states against wall time. Software written for the 8080 (delay loops, disk timing, serial pacing) behaves correctly at 2 MHz; `'max'` runs unthrottled.
+
+```ts
+import { MachineRunner } from '8sim';
+
+const runner = new MachineRunner(cpu);                    // 2 MHz (stock 8080)
+const runner = new MachineRunner(cpu, { hz: 4_000_000 }); // 4 MHz
+const runner = new MachineRunner(cpu, { hz: 'max' });     // unthrottled
+
+runner.start();
+runner.setHz('max');       // change speed while running
+console.log(runner.effectiveHz); // measured speed, for status displays
+runner.stop();
+```
+
+Pacing details: the CPU runs in ~1 ms slices of simulated time against absolute wall-time accounting (scheduler jitter self-corrects). When ahead, the runner sleeps the difference; when behind, it catches up in bounded slices (max 20 ms) so host I/O stays responsive; a host stall longer than 250 ms (GC pause, suspended tab) is forfeited rather than replayed at full speed. Browser-portable (`performance.now` + `setTimeout`); Node callers can pass a `schedule` option using `setImmediate` for higher `'max'` throughput.
 
 ### `ImmediateClock`
 
@@ -189,22 +208,7 @@ console.log(clock.getElapsedCycles()); // bigint
 
 ### `SystemClock`
 
-Uses `performance.now()` for timing and `setTimeout(fn, 0)` for yielding. Works in Node 16+, all modern browsers, Deno, and Bun.
-
-```ts
-const clock = new SystemClock(2_000_000); // 2 MHz
-
-async function runLoop() {
-  while (!cpu.halted) {
-    for (let i = 0; i < 1000; i++) {
-      clock.addCycles(cpu.step());
-    }
-    if (clock.getAheadMs() > 2) {
-      await clock.yield(); // yield to event loop to avoid blocking
-    }
-  }
-}
-```
+The pacing engine used by `MachineRunner` — a T-state counter with a target frequency and absolute drift accounting (`getAheadMs()`, `setHz()`, `resync()`). Use it directly only if you're writing your own run loop.
 
 ---
 
@@ -268,6 +272,34 @@ The repository includes a CP/M CPU diagnostic integration test. To run it:
 The test loads the binary at `0x0100`, stubs the CP/M BDOS entry point at `0x0005` to capture console output, and expects the output to contain `CPU IS OPERATIONAL` before the CPU halts.
 
 If the fixture is absent the test is silently skipped.
+
+---
+
+## Examples: Interactive CP/M Boot
+
+`examples/boot-cpm.ts` boots CP/M on the emulated 8080 (88-DSK boot PROM + 8251 console + MITS 88-DCDD floppy controller) against a live fdcplus-web server, bridging the console to your terminal for a real interactive session.
+
+The server location and API token are **not** hardcoded — they are read from environment variables, loaded from a local `.env` file:
+
+| Variable | Description | Default |
+|---|---|---|
+| `FDCPLUS_URL` | Base URL of the fdcplus-web server | `http://localhost:3000` |
+| `FDCPLUS_TOKEN` | API token for the fdcplus-web server | *(required)* |
+| `FDCPLUS_CLIENT_ID` | Stable client id for persistent disk writes | *(unset — writes are ephemeral)* |
+| `CPU_HZ` | CPU speed: `2mhz`, `4mhz`, a raw Hz number, or `max` | `2mhz` |
+
+Note on disk writes: fdcplus-web sessions are copy-on-write — writes go to a per-client "splinter", not the master disk image. Without `FDCPLUS_CLIENT_ID`, the splinter (and any files you saved) is discarded when the emulator disconnects. With a stable id, your changes persist across sessions; merge them into the master image via the server's `POST /api/drives/:id/transient/commit` endpoint.
+
+Setup:
+
+1. Copy the template: `cp .env.example .env`
+2. Edit `.env` and set `FDCPLUS_TOKEN` (and `FDCPLUS_URL` if the server isn't on localhost)
+3. Start the fdcplus-web server with a bootable disk mounted on drive 0
+4. Run `npm run boot:cpm`
+
+The `.env` file is gitignored so your token is never committed. The npm script loads it via Node's built-in `--env-file-if-exists` flag (requires Node ≥ 22), so no dotenv dependency is needed. Type at the `A>` prompt; press `Ctrl-]` to quit. Disk writes are flushed back to the mounted image on the server.
+
+The live boot integration test (`tests/integration/bootdisk.live.test.ts`) uses the same variables; the vitest config loads `.env` automatically. The test skips itself when `FDCPLUS_TOKEN` is unset or the server is unreachable.
 
 ---
 

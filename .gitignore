@@ -1,5 +1,14 @@
 node_modules/
 dist/
 *.js.map
-*.tgz
+.DS_Store
 .claude/
+
+# Local environment (secrets) — see .env.example
+.env
+
+# Build artifacts / backups
+*.tgz
+
+# Built example harnesses
+examples/*.mjs
