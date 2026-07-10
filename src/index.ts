@@ -41,6 +41,13 @@ export { FdcPlusClient } from './cards/FdcPlusClient.js';
 export type { WebSocketLike } from './cards/FdcPlusClient.js';
 export { MitsDcddCard } from './cards/MitsDcddCard.js';
 export type { DcddOptions } from './cards/MitsDcddCard.js';
+export { Tr1602Uart } from './cards/Tr1602Uart.js';
+export { Port8212 } from './cards/Port8212.js';
+export { ImsaiMioCard } from './cards/ImsaiMioCard.js';
+export type { MioCardOptions } from './cards/ImsaiMioCard.js';
+export { Mc6850Acia } from './cards/Mc6850Acia.js';
+export { Mits2SioCard } from './cards/Mits2SioCard.js';
+export type { Sio2CardOptions } from './cards/Mits2SioCard.js';
 
 // Utils
 export * from './util/bits.js';

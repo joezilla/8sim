@@ -1,6 +1,10 @@
 node_modules/
 dist/
 *.js.map
+.DS_Store
 
 # Build artifacts / backups
 *.tgz
+
+# Built example harnesses
+examples/*.mjs

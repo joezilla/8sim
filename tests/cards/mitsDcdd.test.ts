@@ -176,21 +176,27 @@ describe('FdcPlusClient — multiple pending ops', () => {
 // ── MitsDcddCard — initial state ──────────────────────────────────────────────
 
 describe('MitsDcddCard — initial state', () => {
-  it('status port reads 0xE7 on fresh card (all status bits inactive)', () => {
+  it('reports inactive status on a fresh card (all active-low bits high)', () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
-    // 0xE7 = 1110_0111: NRDA(7) TRK0(6) INTE(5) 0(4) HEDLD(3) HD(2) 0(1) ENWD(0)
-    // Wait — fresh card: NRDA=1(no head), TRK0=0(at track 0), HEDLD=1, HD=1, MVHD=0, ENWD=1
-    // = 0x80 | 0x00 | 0x08 | 0x04 | 0x00 | 0x01 = 0x8D
-    // But real hardware reset = 0xE7. TRK0 bit 6 would be 1 if NOT at track 0.
-    // At start, currentTrack=0 so TRK0=0 (active-low = we ARE at track 0).
-    // 0x80 | 0x00 | 0x08 | 0x04 | 0x00 | 0x01 = 0x8D
+    // Fresh card, no drive selected: NRDA=1 (no data), TRK0=0 (at track 0),
+    // DRVRDY=1 (no drive selected), HDSTAT=1 (head not loaded), MVHD=0,
+    // ENWD=1 (not ready for write) = 0x80|0x08|0x04|0x01 = 0x8D
     const status = card.ioRead(0x08);
     expect(status & 0x80).toBe(0x80); // NRDA=1 (no data)
-    expect(status & 0x40).toBe(0x00); // TRK0=0 (we ARE at track 0)
-    expect(status & 0x08).toBe(0x08); // HEDLD=1 (head NOT loaded)
+    expect(status & 0x40).toBe(0x00); // TRK0=0 (at track 0)
+    expect(status & 0x08).toBe(0x08); // DRVRDY=1 (no drive selected)
+    expect(status & 0x04).toBe(0x04); // HDSTAT=1 (head not loaded)
     expect(status & 0x02).toBe(0x00); // MVHD=0 (not moving)
     expect(status & 0x01).toBe(0x01); // ENWD=1 (not ready for write)
+  });
+
+  it('DRVRDY (bit 3) goes active once a drive is selected', () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    expect(card.ioRead(0x08) & 0x08).toBe(0x08); // not ready (no drive)
+    card.ioWrite(0x08, 0x00);                     // select drive 0
+    expect(card.ioRead(0x08) & 0x08).toBe(0x00); // DRVRDY=0 (ready)
   });
 
   it('data port reads 0xFF with no track loaded', () => {
@@ -224,8 +230,9 @@ describe('MitsDcddCard — drive select (port 1 write)', () => {
     const status = card.ioRead(0x08);
     // Head-load state and the track under the head persist across a deselect;
     // the MITS multi-stage boot reselects and expects the head still loaded.
-    expect(status & 0x08).toBe(0x00); // HEDLD=0 (still loaded)
+    expect(status & 0x04).toBe(0x00); // HDSTAT=0 (head still loaded)
     expect(status & 0x80).toBe(0x00); // NRDA=0 (data still available)
+    expect(status & 0x08).toBe(0x08); // DRVRDY=1 (drive deselected)
   });
 
   it('reselecting the same drive keeps the loaded head and cached track', async () => {
@@ -240,7 +247,8 @@ describe('MitsDcddCard — drive select (port 1 write)', () => {
     card.ioWrite(0x08, 0x80); // deselect
     card.ioWrite(0x08, 0x00); // reselect drive 0
     const status = card.ioRead(0x08);
-    expect(status & 0x08).toBe(0x00); // HEDLD=0 (head still loaded)
+    expect(status & 0x04).toBe(0x00); // HDSTAT=0 (head still loaded)
+    expect(status & 0x08).toBe(0x00); // DRVRDY=0 (drive selected)
     expect(status & 0x80).toBe(0x00); // NRDA=0 (cached track still valid)
   });
 
@@ -301,10 +309,10 @@ describe('MitsDcddCard — head load and track fetch', () => {
     await flushMicrotasks();
 
     expect(card.ioRead(0x08) & 0x80).toBe(0x00); // NRDA=0
-    expect(card.ioRead(0x08) & 0x08).toBe(0x00); // HEDLD=0 (head IS loaded)
+    expect(card.ioRead(0x08) & 0x04).toBe(0x00); // HDSTAT=0 (head IS loaded)
   });
 
-  it('head unload clears HEDLD and invalidates track data', async () => {
+  it('head unload clears HDSTAT and invalidates track data', async () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
     card.ioWrite(0x08, 0x00);
@@ -316,7 +324,7 @@ describe('MitsDcddCard — head load and track fetch', () => {
 
     card.ioWrite(0x09, 0x08); // head unload
     expect(card.ioRead(0x08) & 0x80).toBe(0x80); // NRDA=1 again
-    expect(card.ioRead(0x08) & 0x08).toBe(0x08); // HEDLD=1
+    expect(card.ioRead(0x08) & 0x04).toBe(0x04); // HDSTAT=1 (head unloaded)
   });
 });
 
@@ -391,71 +399,60 @@ describe('MitsDcddCard — data read (port 3)', () => {
 // ── MitsDcddCard — step (seek) ────────────────────────────────────────────────
 
 describe('MitsDcddCard — step commands', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  // Seeks are instantaneous in emulation: MVHD never reports "moving", and no
+  // step pulse is ever dropped (which would desync track position).
 
-  it('Step In increments track, sets headMoving, clears after timeout', async () => {
+  it('Step In moves off track 0 with MVHD never asserting', async () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
     card.ioWrite(0x08, 0x00);
     ws.inject(makeResponse('STAT', 0, 0x01));
     await flushMicrotasks();
 
+    expect(card.ioRead(0x08) & 0x40).toBe(0x00); // TRK0=0 (at track 0)
     card.ioWrite(0x09, 0x01); // Step In
-    expect(card.ioRead(0x08) & 0x02).toBe(0x02); // MVHD=1 (moving)
-
-    vi.advanceTimersByTime(20);
-    await flushMicrotasks();
-    expect(card.ioRead(0x08) & 0x02).toBe(0x00); // MVHD=0 (done)
+    expect(card.ioRead(0x08) & 0x02).toBe(0x00); // MVHD stays 0 (instant)
+    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // TRK0=1 (no longer at track 0)
   });
 
-  it('Step Out decrements track, clamps at 0', async () => {
+  it('Step Out clamps at track 0', () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
     card.ioWrite(0x08, 0x00);
-    ws.inject(makeResponse('STAT', 0, 0x01));
-    await flushMicrotasks();
-
     card.ioWrite(0x09, 0x02); // Step Out (already at track 0 — should clamp)
-    vi.advanceTimersByTime(20);
-    await flushMicrotasks();
-
-    // Still at track 0 (TRK0 bit = 0, active-low)
-    expect(card.ioRead(0x08) & 0x40).toBe(0x00);
+    expect(card.ioRead(0x08) & 0x40).toBe(0x00); // still at track 0
   });
 
-  it('Step In then Out returns to track 0', async () => {
+  it('consecutive Step In pulses are NOT dropped (no headMoving gate)', () => {
     const ws = new MockWs();
     const card = new MitsDcddCard('dcdd', ws);
     card.ioWrite(0x08, 0x00);
-
-    // Step In to track 1
+    // Two step-ins in a row must advance by two tracks; stepping out twice
+    // returns to track 0 exactly (proving neither pulse was dropped).
     card.ioWrite(0x09, 0x01);
-    vi.advanceTimersByTime(20);
-    await flushMicrotasks();
+    card.ioWrite(0x09, 0x01);
+    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // track 2, not at 0
+    card.ioWrite(0x09, 0x02);
+    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // track 1, still not at 0
+    card.ioWrite(0x09, 0x02);
+    expect(card.ioRead(0x08) & 0x40).toBe(0x00); // back at track 0
+  });
+
+  it('a step invalidates the cached track and refetches the new track', async () => {
+    const ws = new MockWs();
+    const card = new MitsDcddCard('dcdd', ws);
+    card.ioWrite(0x08, 0x00);
     ws.inject(makeResponse('STAT', 0, 0x01));
+    card.ioWrite(0x09, 0x04); // head load → fetch track 0
     ws.inject(new Uint8Array(4384));
     await flushMicrotasks();
-    expect(card.ioRead(0x08) & 0x40).toBe(0x40); // TRK0=1 (not at track 0)
+    expect(card.ioRead(0x08) & 0x80).toBe(0x00); // NRDA=0 (track 0 cached)
 
-    // Step Out back to track 0
-    card.ioWrite(0x09, 0x02);
-    vi.advanceTimersByTime(20);
+    card.ioWrite(0x09, 0x01); // Step In → cache invalidated, refetch track 1
+    expect(card.ioRead(0x08) & 0x80).toBe(0x80); // NRDA=1 (fetching)
+    ws.inject(new Uint8Array(4384));
     await flushMicrotasks();
-    ws.inject(new Uint8Array(4384)); // fetch for track 0 if head loaded
-    await flushMicrotasks();
-    expect(card.ioRead(0x08) & 0x40).toBe(0x00); // TRK0=0
-  });
-
-  it('second Step In is ignored while head is moving', () => {
-    const ws = new MockWs();
-    const card = new MitsDcddCard('dcdd', ws);
-    card.ioWrite(0x09, 0x01); // Step In
-    card.ioWrite(0x09, 0x01); // second Step In — should be ignored
-    vi.advanceTimersByTime(20); // first step completes
-    // Only one READ should have been sent (no drive selected, so no fetch)
-    // But STAT from drive select... actually no drive was selected here, so no STAT
-    expect(ws.sent.length).toBe(0); // no drive selected, no network activity
+    expect(card.ioRead(0x08) & 0x80).toBe(0x00); // NRDA=0 (track 1 cached)
   });
 });
 

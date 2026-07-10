@@ -23,7 +23,6 @@ export class MitsDcddCard implements IS100Card, IIODevice {
   private selectedDrive = 0xFF;
   private currentTrack  = 0;
   private headLoaded    = false;
-  private headMoving    = false;
   private writeEnabled  = false;
   private fetchPending  = false;
   private trackData:    Uint8Array | null = null;
@@ -65,7 +64,6 @@ export class MitsDcddCard implements IS100Card, IIODevice {
     this.selectedDrive = 0xFF;
     this.currentTrack  = 0;
     this.headLoaded    = false;
-    this.headMoving    = false;
     this.writeEnabled  = false;
     this.fetchPending  = false;
     this.trackData     = null;
@@ -79,13 +77,21 @@ export class MitsDcddCard implements IS100Card, IIODevice {
   // --- Port 1: status (READ) / drive select (WRITE) ---
 
   private readStatus(): number {
-    const nrda  = (!this.headLoaded || !this.trackData || this.fetchPending) ? 0x80 : 0;
-    const trk0  = this.currentTrack === 0 ? 0x00 : 0x40;
-    const hedld = this.headLoaded ? 0x00 : 0x08;
-    const hd    = this.headLoaded ? 0x00 : 0x04;
-    const mvhd  = this.headMoving  ? 0x02 : 0x00;
-    const enwd  = this.writeEnabled ? 0x00 : 0x01;
-    return nrda | trk0 | hedld | hd | mvhd | enwd;
+    this.ensureTrack(); // lazily (re)start a fetch if the current track isn't cached
+    // 88-DCDD status register, all bits active-low (0 = condition true):
+    //   bit7 NRDA   — new read data available
+    //   bit6 TRK0   — head at track 0
+    //   bit3 DRVRDY — drive ready (a drive is selected and its disk is present)
+    //   bit2 HDSTAT — head loaded / positioning valid
+    //   bit1 MVHEAD — head movement complete (instantaneous in emulation)
+    //   bit0 ENWDAT — ready to accept write data
+    const nrda   = (!this.headLoaded || !this.trackData || this.fetchPending) ? 0x80 : 0;
+    const trk0   = this.currentTrack === 0 ? 0x00 : 0x40;
+    const drvrdy = this.selectedDrive !== 0xFF ? 0x00 : 0x08;
+    const hdstat = this.headLoaded ? 0x00 : 0x04;
+    const mvhd   = 0x00;
+    const enwd   = this.writeEnabled ? 0x00 : 0x01;
+    return nrda | trk0 | drvrdy | hdstat | mvhd | enwd;
   }
 
   private writeDriveSelect(value: number): void {
@@ -106,8 +112,8 @@ export class MitsDcddCard implements IS100Card, IIODevice {
     // Selecting a different drive invalidates the cached track (different disk).
     if (drive !== this.cacheDrive) {
       this.trackData = null;
-      if (this.headLoaded) this.fetchTrack();
     }
+    this.ensureTrack();
     this.fdcClient
       .stat(this.selectedDrive, this.headLoaded, this.currentTrack)
       .catch(() => {});
@@ -146,7 +152,7 @@ export class MitsDcddCard implements IS100Card, IIODevice {
     }
     if ((value & 0x04) !== 0) { // Head Load
       this.headLoaded = true;
-      if (this.selectedDrive !== 0xFF) this.fetchTrack();
+      this.ensureTrack();
     }
     if ((value & 0x02) !== 0) this.issueStep('out'); // Step Out
     if ((value & 0x01) !== 0) this.issueStep('in');  // Step In
@@ -177,15 +183,40 @@ export class MitsDcddCard implements IS100Card, IIODevice {
 
   // --- Private helpers ---
 
+  /**
+   * Start fetching the current track if the head is loaded, a drive is
+   * selected, we don't already have the data, and no fetch is in flight. Safe
+   * to call from any read/command path — it converges on caching the track the
+   * head is currently over.
+   */
+  private ensureTrack(): void {
+    if (!this.headLoaded || this.selectedDrive === 0xFF) return;
+    if (this.trackData || this.fetchPending) return;
+    this.fetchTrack();
+  }
+
   private fetchTrack(): void {
-    if (this.selectedDrive === 0xFF || !this.headLoaded) return;
+    if (this.selectedDrive === 0xFF || !this.headLoaded || this.fetchPending) return;
     this.fetchPending = true;
     const drive = this.selectedDrive;
+    const track = this.currentTrack;
     this.fdcClient
-      .readTrack(drive, this.currentTrack, TRACK_LEN)
-      .then(data  => { this.trackData = data; this.cacheDrive = drive; })
-      .catch(()   => { this.trackData = null; })
-      .finally(() => { this.fetchPending = false; });
+      .readTrack(drive, track, TRACK_LEN)
+      .then((data) => {
+        // Only install the data if the head hasn't moved (and the same drive is
+        // still selected) since the fetch began — otherwise it belongs to a
+        // track we're no longer over and would corrupt the next read.
+        if (track === this.currentTrack && drive === this.selectedDrive) {
+          this.trackData = data;
+          this.cacheDrive = drive;
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.fetchPending = false;
+        // If the head moved during the fetch, chase the track it's now over.
+        this.ensureTrack();
+      });
   }
 
   private flushWrite(): void {
@@ -200,15 +231,13 @@ export class MitsDcddCard implements IS100Card, IIODevice {
   }
 
   private issueStep(dir: 'in' | 'out'): void {
-    if (this.headMoving) return;
+    // Seeks are instantaneous in emulation. A real-time settle delay would
+    // desync from the emulated CPU (which the software paces itself), and
+    // dropping "too-fast" step pulses would lose track position entirely.
     if (dir === 'in')  this.currentTrack = Math.min(MAX_TRACK, this.currentTrack + 1);
     else               this.currentTrack = Math.max(0, this.currentTrack - 1);
-    this.headMoving   = true;
-    this.trackData    = null;
+    this.trackData    = null; // head moved; cached track is no longer under it
     this.writeEnabled = false;
-    setTimeout(() => {
-      this.headMoving = false;
-      if (this.headLoaded) this.fetchTrack();
-    }, 15);
+    this.ensureTrack();       // begin fetching the new track
   }
 }
