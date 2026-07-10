@@ -65,7 +65,7 @@ cpu.run();
 
 ```
 ┌──────────────────────────────────────────────────┐
-│                  Cpu8080                          │
+│            ICpu (Cpu8080 | CpuZ80)                │
 │  Registers, Flags, Decoder, step() / run()        │
 │  polls: IInterruptController                      │
 │  accesses: IBus                                   │
@@ -325,6 +325,8 @@ If the fixture is absent the test is silently skipped.
 
 `examples/boot-cpm.ts` boots CP/M on the emulated 8080 (88-DSK boot PROM + 8251 console + MITS 88-DCDD floppy controller) against a live fdcplus-web server, bridging the console to your terminal for a real interactive session.
 
+The same session runs on the **Z80** core two ways: set `CPU=z80 npm run boot:cpm`, or use the dedicated `examples/boot-cpm-z80.ts` via `npm run boot:cpm:z80`. Stock Altair CP/M is 8080-compatible, so it boots on the Z80 unchanged.
+
 The server location and API token are **not** hardcoded — they are read from environment variables, loaded from a local `.env` file:
 
 | Variable | Description | Default |
@@ -385,23 +387,31 @@ npm run build
 ```
 src/
 ├── cpu/
-│   ├── Cpu8080.ts          — main CPU: step(), run(), interrupt handling
+│   ├── Cpu8080.ts          — Intel 8080 CPU: step(), run(), interrupt handling
 │   ├── Registers.ts        — A B C D E H L SP PC, pair accessors
 │   ├── Flags.ts            — S Z AC P CY, PSW byte serialize/deserialize
 │   ├── Decoder.ts          — 256-entry InstructionHandler dispatch table
-│   └── instructions/       — one file per instruction group
+│   ├── instructions/       — one file per 8080 instruction group
+│   └── z80/                — Zilog Z80 core
+│       ├── CpuZ80.ts       — step loop, DD/FD prefixes, IM 0/1/2 + NMI
+│       ├── RegistersZ80.ts — main + shadow + IX/IY/I/R/WZ
+│       ├── FlagsZ80.ts     — S Z Y H X PV N C
+│       ├── DecoderZ80.ts   — main/IX/IY + CB/ED/DDCB tables
+│       ├── flagHelpers.ts  — shared flag math (X/Y aware)
+│       └── instructions/   — one file per Z80 instruction group
 ├── bus/                    — Bus, BusRegion
 ├── memory/                 — Ram, Rom, MemoryMappedIOAdapter
 ├── io/                     — IoSpace
 ├── interrupt/              — InterruptController
 ├── clock/                  — ImmediateClock, SystemClock
-├── interfaces/             — IBus IMemory IIODevice IInterruptController IClock IModule
+├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule
 └── util/bits.ts            — u8 u16 signBit zeroFlag parityFlag auxCarryAdd toWord hi lo
 tests/
 ├── cpu/                    — per-instruction-group unit tests + interrupt tests
+│   └── z80/                — Z80 registers, flags, CB/indexed/DDCB, interrupts
 ├── bus/                    — bus routing, ROM protection, MMIO
 ├── memory/                 — RAM, ROM, MemoryMappedIOAdapter
-└── integration/            — cpudiag.com end-to-end test
+└── integration/            — cpudiag.com + Z80 prelim/zexdoc/zexall end-to-end tests
 ```
 
 ---
