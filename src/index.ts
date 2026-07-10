@@ -1,5 +1,6 @@
 // Interfaces
 export type { IModule } from './interfaces/IModule.js';
+export type { ICpu } from './interfaces/ICpu.js';
 export type { IBus } from './interfaces/IBus.js';
 export type { IMemory } from './interfaces/IMemory.js';
 export type { IIODevice } from './interfaces/IIODevice.js';
@@ -12,6 +13,9 @@ export type { IS100Card } from './interfaces/IS100Card.js';
 export { Cpu8080 } from './cpu/Cpu8080.js';
 export { Registers } from './cpu/Registers.js';
 export { Flags } from './cpu/Flags.js';
+export { CpuZ80 } from './cpu/z80/CpuZ80.js';
+export { RegistersZ80 } from './cpu/z80/RegistersZ80.js';
+export { FlagsZ80 } from './cpu/z80/FlagsZ80.js';
 
 // Bus
 export { Bus } from './bus/Bus.js';
