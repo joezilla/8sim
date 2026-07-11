@@ -1,9 +1,10 @@
 {
-  "name": "8sim",
+  "name": "@joezilla/8sim",
   "version": "0.1.0",
-  "description": "Intel 8080 CPU Simulator",
+  "description": "Intel 8080 / Zilog Z80 CPU simulator with an S-100 bus, pluggable cards, and a machine builder.",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -11,8 +12,16 @@
     }
   },
   "files": ["dist"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joezilla/8sim.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/8sim.browser.js",
+    "prepack": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "boot:cpm": "esbuild examples/boot-cpm.ts --bundle --platform=node --format=esm --outfile=examples/boot-cpm.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-cpm.mjs",
