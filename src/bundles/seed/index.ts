@@ -75,11 +75,12 @@ export const imsaiMioBundle: CardBundle = {
     version: '1.0.0',
     type: 'serial',
     maker: 'IMSAI',
-    summary: 'IMSAI MIO multi-I/O card (serial at basePort+2).',
-    configSchema: { basePort: { type: 'u8', default: 0x10, min: 0, max: 0xfd } },
+    summary: 'IMSAI MIO multi-I/O card: two 8212 parallel ports (base+0/+1) and a TR1602 UART (base+2/+3).',
+    configSchema: { basePort: { type: 'u8', default: 0x10, min: 0, max: 0xfc } },
   },
   cardFactory: (id, cfg) => new ImsaiMioCard(id, { basePort: u8(cfg.basePort, 0x10) }),
-  claims: (cfg) => { const b = u8(cfg.basePort, 0x10); return { ports: [b + 2, b + 3] }; },
+  // Registers 4 consecutive ports: portA(base), portB(base+1), UART(base+2/+3).
+  claims: (cfg) => { const b = u8(cfg.basePort, 0x10); return { ports: [b, b + 1, b + 2, b + 3] }; },
 };
 
 export const mitsDcddBundle: CardBundle = {

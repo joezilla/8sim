@@ -44,14 +44,48 @@ export interface CardBundle {
   claims: ClaimsFn;
 }
 
-/** Merge a resolved config over the manifest's schema defaults. */
+/** Thrown when a card config violates its manifest's Config Schema. */
+export class CardConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CardConfigError';
+  }
+}
+
+/**
+ * Merge a resolved config over the manifest's schema defaults, validating each
+ * value against its ConfigParamSpec (range for `u8`/`u16`, membership for
+ * `enum`). Throws {@link CardConfigError} on a violation so an out-of-range
+ * port can't be silently masked into a different (and mis-claimed) one.
+ *
+ * Keys present in `config` but absent from the schema are ignored (the schema
+ * is the contract) — a typo'd key silently takes its default.
+ */
 export function withDefaults(
   manifest: CardManifest,
   config: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, spec] of Object.entries(manifest.configSchema)) {
-    out[key] = key in config ? config[key] : spec.default;
+    const value = key in config ? config[key] : spec.default;
+    validateParam(manifest.name, key, spec, value);
+    out[key] = value;
   }
   return out;
+}
+
+function validateParam(card: string, key: string, spec: ConfigParamSpec, value: unknown): void {
+  const where = `card "${card}" config "${key}"`;
+  if (spec.type === 'enum') {
+    if (!spec.enum || !spec.enum.includes(value as number | string)) {
+      throw new CardConfigError(`${where}: ${JSON.stringify(value)} is not one of ${JSON.stringify(spec.enum ?? [])}`);
+    }
+    return;
+  }
+  // u8 / u16 numeric range.
+  const hi = spec.max ?? (spec.type === 'u16' ? 0xffff : 0xff);
+  const lo = spec.min ?? 0;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < lo || value > hi) {
+    throw new CardConfigError(`${where}: ${JSON.stringify(value)} must be an integer in ${lo}..${hi}`);
+  }
 }

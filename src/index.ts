@@ -55,7 +55,7 @@ export type {
 } from './machine/MachineSpec.js';
 
 // Card bundles (seed)
-export { withDefaults } from './bundles/CardBundle.js';
+export { withDefaults, CardConfigError } from './bundles/CardBundle.js';
 export type { CardBundle, CardManifest, ConfigParamSpec, ClaimsFn } from './bundles/CardBundle.js';
 export { seedBundles, seedBundleByName } from './bundles/seed/index.js';
 

@@ -2,10 +2,35 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { buildMachine } from '../../src/machine/buildMachine.js';
-import { MachineSpecError } from '../../src/machine/MachineSpec.js';
-import { withDefaults } from '../../src/bundles/CardBundle.js';
-import { seedBundles, imsaiSioBundle, mitsDcddBundle } from '../../src/bundles/seed/index.js';
+import { MachineSpecError, type CardContext } from '../../src/machine/MachineSpec.js';
+import { withDefaults, CardConfigError, type CardBundle } from '../../src/bundles/CardBundle.js';
+import { seedBundles, imsaiSioBundle, imsaiMioBundle, mitsDcddBundle } from '../../src/bundles/seed/index.js';
+import { InterruptController } from '../../src/interrupt/InterruptController.js';
+import type { Bus } from '../../src/bus/Bus.js';
+import type { IIODevice } from '../../src/interfaces/IIODevice.js';
 import type { WebSocketLike } from '../../src/cards/FdcPlusClient.js';
+
+const stubWs: WebSocketLike = {
+  send: () => {},
+  close: () => {},
+  onmessage: null,
+  onclose: null,
+  onerror: null,
+  readyState: 1,
+};
+
+/** Build a card and capture the I/O ports it actually registers on the bus. */
+function registeredPorts(bundle: CardBundle, cfg: Record<string, unknown>): number[] {
+  const ports: number[] = [];
+  const probeBus = {
+    attachIODevice: (d: IIODevice) => ports.push(...d.basePorts.map((p) => p & 0xff)),
+    attachMemory: () => {},
+  } as unknown as Bus;
+  const ctx: CardContext = { pic: new InterruptController(), log: () => {}, services: { fdc: stubWs } };
+  const card = bundle.cardFactory('probe', cfg, ctx);
+  card.attach(probeBus);
+  return ports;
+}
 
 describe('seed card bundles', () => {
   it('exposes a registry of well-formed bundles with unique Identity', () => {
@@ -37,6 +62,24 @@ describe('seed card bundles', () => {
       });
       expect(m.cards).toHaveLength(1);
     }
+  });
+
+  it('declares claims that exactly match the ports each card registers', () => {
+    // Regression guard: a bundle's hand-written claims must equal the ports its
+    // card actually registers on the bus, or a real collision slips past
+    // buildMachine's validation (which sees only claims).
+    for (const b of seedBundles) {
+      const cfg = withDefaults(b.manifest);
+      const declared = [...new Set((b.claims(cfg).ports ?? []).map((p) => p & 0xff))].sort((x, y) => x - y);
+      const actual = [...new Set(registeredPorts(b, cfg))].sort((x, y) => x - y);
+      expect(actual, `claims mismatch for "${b.manifest.name}"`).toEqual(declared);
+    }
+  });
+
+  it('rejects config values outside the schema bounds', () => {
+    expect(() => withDefaults(imsaiMioBundle.manifest, { basePort: 0x1ff })).toThrow(CardConfigError);
+    expect(() => withDefaults(imsaiMioBundle.manifest, { basePort: -1 })).toThrow(CardConfigError);
+    expect(() => withDefaults(imsaiMioBundle.manifest, { basePort: 1.5 })).toThrow(CardConfigError);
   });
 
   it('rejects two seed serial cards that claim the same base port', () => {
@@ -103,5 +146,7 @@ describe('seed card bundles', () => {
       await flush();
     }
     expect(sent.length).toBeGreaterThan(0);
+    const cmd = sent[0]!.length >= 4 ? String.fromCharCode(sent[0]![0]!, sent[0]![1]!, sent[0]![2]!, sent[0]![3]!) : '?';
+    expect(['STAT', 'READ', 'WRIT']).toContain(cmd);
   });
 });
