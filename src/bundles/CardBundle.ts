@@ -17,11 +17,22 @@ export interface ConfigParamSpec {
   description?: string;
 }
 
+/**
+ * The kind of bus primitive this bundle models. An S-100 machine is assembled
+ * from `card`s (things that occupy a bus slot); a `chip` is a component that
+ * lives ON a card (e.g. a 6850 ACIA on the 88-2SIO). 8sim can also expose a
+ * bare chip as a minimal bus device (via `deviceCard`), so a `chip` primitive
+ * is placeable, but it is a component reference — not a real S-100 board.
+ */
+export type PrimitiveKind = 'card' | 'chip';
+
 export interface CardManifest {
   /** Bundle name (Identity is `name@version`). */
   name: string;
   version: string; // semver
   type: 'serial' | 'floppy' | 'memory' | 'panel' | 'other';
+  /** Bus-ontology kind: an S-100 board vs. a component chip. Defaults to `card`. */
+  kind?: PrimitiveKind;
   maker?: string;
   summary?: string;
   configSchema: Record<string, ConfigParamSpec>;

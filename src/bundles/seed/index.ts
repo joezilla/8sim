@@ -34,6 +34,7 @@ export const mits2SioBundle: CardBundle = {
     name: 'mits-88-2sio',
     version: '1.0.0',
     type: 'serial',
+    kind: 'card',
     maker: 'MITS',
     summary: 'MITS 88-2SIO dual serial interface (2× 6850 ACIA).',
     configSchema: { basePort: { type: 'u8', default: 0x10, min: 0, max: 0xfc, description: 'Base I/O port (claims base..base+3)' } },
@@ -47,6 +48,7 @@ export const imsaiSioBundle: CardBundle = {
     name: 'imsai-sio2',
     version: '1.0.0',
     type: 'serial',
+    kind: 'card',
     maker: 'IMSAI',
     summary: 'IMSAI SIO-2 dual 8251 serial card with a board-control port.',
     configSchema: {
@@ -74,6 +76,7 @@ export const imsaiMioBundle: CardBundle = {
     name: 'imsai-mio',
     version: '1.0.0',
     type: 'serial',
+    kind: 'card',
     maker: 'IMSAI',
     summary: 'IMSAI MIO multi-I/O card: two 8212 parallel ports (base+0/+1) and a TR1602 UART (base+2/+3).',
     configSchema: { basePort: { type: 'u8', default: 0x10, min: 0, max: 0xfc } },
@@ -88,6 +91,7 @@ export const mitsDcddBundle: CardBundle = {
     name: 'mits-88-dcdd',
     version: '1.0.0',
     type: 'floppy',
+    kind: 'card',
     maker: 'MITS',
     summary: 'MITS 88-DCDD 8-inch floppy controller; disk I/O over the FDC channel.',
     configSchema: { basePort: { type: 'u8', default: 0x08, min: 0, max: 0xfd } },
@@ -109,6 +113,7 @@ export const usart8251Bundle: CardBundle = {
     name: 'intel-8251',
     version: '1.0.0',
     type: 'serial',
+    kind: 'chip',
     maker: 'Intel',
     summary: 'Intel 8251 USART (data + control port).',
     configSchema: {
@@ -126,6 +131,7 @@ export const mc6850Bundle: CardBundle = {
     name: 'motorola-6850',
     version: '1.0.0',
     type: 'serial',
+    kind: 'chip',
     maker: 'Motorola',
     summary: 'Motorola 6850 ACIA (status + data port).',
     configSchema: {
@@ -143,6 +149,7 @@ export const port8212Bundle: CardBundle = {
     name: 'intel-8212',
     version: '1.0.0',
     type: 'other',
+    kind: 'chip',
     maker: 'Intel',
     summary: 'Intel 8212 8-bit I/O port.',
     configSchema: { port: { type: 'u8', default: 0xff, min: 0, max: 0xff } },
@@ -156,6 +163,7 @@ export const tr1602Bundle: CardBundle = {
     name: 'tr1602-uart',
     version: '1.0.0',
     type: 'serial',
+    kind: 'chip',
     maker: 'Western Digital',
     summary: 'TR1602 UART (data + status port).',
     configSchema: {

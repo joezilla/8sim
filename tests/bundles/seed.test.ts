@@ -47,6 +47,23 @@ describe('seed card bundles', () => {
     }
   });
 
+  it('classifies each bundle as a card (S-100 board) or chip (component)', () => {
+    const kindOf = (name: string) =>
+      seedBundles.find((b) => b.manifest.name === name)!.manifest.kind;
+    // Real S-100 boards.
+    for (const n of ['mits-88-2sio', 'imsai-sio2', 'imsai-mio', 'mits-88-dcdd']) {
+      expect(kindOf(n), n).toBe('card');
+    }
+    // Bare component chips (deviceCard-wrapped) — the parts those cards are built from.
+    for (const n of ['intel-8251', 'motorola-6850', 'intel-8212', 'tr1602-uart']) {
+      expect(kindOf(n), n).toBe('chip');
+    }
+    // Every bundle is classified.
+    for (const b of seedBundles) {
+      expect(['card', 'chip'], b.manifest.name).toContain(b.manifest.kind);
+    }
+  });
+
   it('derives collision-valid claims from schema defaults', () => {
     for (const b of seedBundles) {
       const cfg = withDefaults(b.manifest);
