@@ -54,6 +54,11 @@ export type {
   CardContext,
 } from './machine/MachineSpec.js';
 
+// Card bundles (seed)
+export { withDefaults, CardConfigError } from './bundles/CardBundle.js';
+export type { CardBundle, CardManifest, ConfigParamSpec, ClaimsFn } from './bundles/CardBundle.js';
+export { seedBundles, seedBundleByName } from './bundles/seed/index.js';
+
 // Cards
 export { Usart8251 } from './cards/Usart8251.js';
 export { ImsaiSioCard } from './cards/ImsaiSioCard.js';

@@ -53,7 +53,9 @@ describe('CDBL boots from a MachineSpec', () => {
         { id: 'cdbl', base: 0xff00, size: rom.length, kind: 'rom', image: rom },
       ],
       cards: [
-        { id: 'sio', factory: sioFactory, claims: { ports: [0x12, 0x13] } },
+        // ImsaiSioCard(basePortA:0x12, boardCtrlPort:0x18) registers channelA
+        // (0x12/0x13), channelB at its 0x04 default (0x04/0x05), and ctrl 0x18.
+        { id: 'sio', factory: sioFactory, claims: { ports: [0x12, 0x13, 0x04, 0x05, 0x18] } },
         { id: 'dcdd', factory: dcddFactory, claims: { ports: [0x08, 0x09, 0x0a] } },
       ],
     });

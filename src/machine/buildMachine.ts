@@ -55,6 +55,11 @@ export function buildMachine(spec: MachineSpec, opts: BuildOptions = {}): Machin
   }
 
   // 2) Cards, in slot order. Each factory is already loaded (AD-2).
+  // NOTE (forward-compat gap): a card may attach its own memory (a
+  // memory-mapped I/O card via MemoryMappedIOAdapter) through `attach(bus)`,
+  // which bypasses the declarative memory-region overlap check above. No seed
+  // card does this today; when memory-mapped cards land, their regions must be
+  // declared and validated too (tracked with the deferred `mmio` region kind).
   const ctx: CardContext = {
     pic,
     log: opts.log ?? (() => {}),
@@ -103,6 +108,11 @@ function validate(spec: MachineSpec): void {
     if (r.kind === 'rom' && (!r.image || r.image.length !== r.size)) {
       throw new MachineSpecError(
         `memory region "${r.id}": rom requires an image whose length (${r.image?.length ?? 0}) equals size (${r.size})`,
+      );
+    }
+    if (r.kind === 'ram' && r.image && r.image.length > r.size) {
+      throw new MachineSpecError(
+        `memory region "${r.id}": ram image length (${r.image.length}) exceeds size (${r.size})`,
       );
     }
   }
