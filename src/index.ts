@@ -40,6 +40,19 @@ export { SystemClock } from './clock/SystemClock.js';
 // Machine
 export { MachineRunner } from './machine/MachineRunner.js';
 export type { MachineRunnerOptions, CpuSpeed, ISteppable } from './machine/MachineRunner.js';
+export { buildMachine } from './machine/buildMachine.js';
+export type { BuildOptions } from './machine/buildMachine.js';
+export { MachineSpecError } from './machine/MachineSpec.js';
+export type {
+  MachineSpec,
+  Machine,
+  CpuKind,
+  Clock,
+  MemoryRegionSpec,
+  CardSpec,
+  CardFactory,
+  CardContext,
+} from './machine/MachineSpec.js';
 
 // Cards
 export { Usart8251 } from './cards/Usart8251.js';

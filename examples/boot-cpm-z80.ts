@@ -109,8 +109,13 @@ async function main(): Promise<void> {
     raw.addEventListener('error', () => reject(new Error('WebSocket error')), { once: true });
     setTimeout(() => reject(new Error('WebSocket open timeout')), 5000);
   });
-  await fetch(`${BASE}/api/disk-serving/disable`, { method: 'POST', headers: AUTH });
-  await fetch(`${BASE}/api/disk-serving/enable`, { method: 'POST', headers: AUTH });
+  // Opening the /fdc-ws socket IS the bind: under multi-client serving the
+  // server spins up a dedicated copy-on-write served loop for this connection
+  // (ConnectionManager.addWsClient). Do NOT poke /api/disk-serving here — a
+  // disable→enable "rebind" ritual tears down this very connection (disable
+  // runs connectionManager.stopAll) and re-binds serving to the configured
+  // serial port, orphaning us mid-boot. Just give the server a beat to start
+  // our served loop before the CPU issues its first FDC command.
   await sleep(200);
 
   // --- Build the machine ---------------------------------------------------
