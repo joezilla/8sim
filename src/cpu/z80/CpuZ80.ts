@@ -1,5 +1,5 @@
 import type { IBus } from '../../interfaces/IBus.js';
-import type { ICpu } from '../../interfaces/ICpu.js';
+import type { ICpu, CpuState } from '../../interfaces/ICpu.js';
 import type { IInterruptController } from '../../interfaces/IInterruptController.js';
 import type { Z80Core } from './types.js';
 import { RegistersZ80 } from './RegistersZ80.js';
@@ -42,6 +42,12 @@ export class CpuZ80 implements ICpu, Z80Core {
   /** Program counter accessor (ICpu). */
   get pc(): number { return this.regs.pc; }
   set pc(v: number) { this.regs.pc = u16(v); }
+
+  /** Uniform register/flags snapshot for introspection (ICpu). */
+  state(): CpuState {
+    const r = this.regs;
+    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted };
+  }
 
   /** Assert a non-maskable interrupt (edge-triggered latch; serviced next step). */
   triggerNMI(): void {

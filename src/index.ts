@@ -1,6 +1,6 @@
 // Interfaces
 export type { IModule } from './interfaces/IModule.js';
-export type { ICpu } from './interfaces/ICpu.js';
+export type { ICpu, CpuState } from './interfaces/ICpu.js';
 export type { IBus } from './interfaces/IBus.js';
 export type { IMemory } from './interfaces/IMemory.js';
 export type { IIODevice } from './interfaces/IIODevice.js';

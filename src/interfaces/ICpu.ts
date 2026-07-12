@@ -17,4 +17,23 @@ export interface ICpu {
   halted: boolean;
   /** Program counter, proxying the underlying register file. */
   pc: number;
+  /** A uniform read-only register/flags snapshot for introspection (front panel,
+   * debuggers) — the common 8-bit registers both cores share. */
+  state(): CpuState;
+}
+
+/** A CPU register/flags snapshot — the registers common to the 8080 and Z80. */
+export interface CpuState {
+  pc: number;
+  sp: number;
+  a: number;
+  /** Flags packed to a byte (PSW low byte on the 8080; F on the Z80). */
+  f: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  h: number;
+  l: number;
+  halted: boolean;
 }

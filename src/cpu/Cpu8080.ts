@@ -1,5 +1,5 @@
 import type { IBus } from '../interfaces/IBus.js';
-import type { ICpu } from '../interfaces/ICpu.js';
+import type { ICpu, CpuState } from '../interfaces/ICpu.js';
 import type { IInterruptController } from '../interfaces/IInterruptController.js';
 import { Registers } from './Registers.js';
 import { Flags } from './Flags.js';
@@ -28,6 +28,12 @@ export class Cpu8080 implements ICpu {
   /** Program counter accessor (ICpu); proxies the register file. */
   get pc(): number { return this.registers.pc; }
   set pc(v: number) { this.registers.pc = u16(v); }
+
+  /** Uniform register/flags snapshot for introspection (ICpu). */
+  state(): CpuState {
+    const r = this.registers;
+    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted };
+  }
 
   constructor(bus: IBus, pic: IInterruptController) {
     this.bus = bus;
