@@ -2,6 +2,7 @@ import type { CardFactory, MemoryRegionSpec } from '../machine/MachineSpec.js';
 import type { ConfigParamSpec, ClaimsFn } from './CardBundle.js';
 import { SerialCard, type SerialChip } from '../cards/SerialCard.js';
 import { ParallelCard, type PortDirection } from '../cards/ParallelCard.js';
+import { KeyboardCard } from '../cards/KeyboardCard.js';
 import { VdmCard } from '../cards/VdmCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
@@ -71,6 +72,26 @@ export const parallelKernel: CardKernel = {
   claims: (cfg) => ({ ports: [u8(cfg.port, 0x00)] }),
 };
 
+/** An ASCII keyboard input port: a data + status port bound to the operator's keyboard. */
+export const keyboardKernel: CardKernel = {
+  id: 'keyboard',
+  label: 'Keyboard input port (ASCII)',
+  type: 'keyboard',
+  binding: 'keyboard',
+  configSchema: {
+    dataPort: { type: 'u8', default: 0x01, min: 0, max: 0xff, description: 'Key data register port' },
+    statusPort: { type: 'u8', default: 0x00, min: 0, max: 0xff, description: 'Key-ready status port' },
+    readyMask: { type: 'u8', default: 0x01, min: 0, max: 0xff, description: 'Status bits set while a key waits' },
+  },
+  create: (id, cfg) =>
+    new KeyboardCard(id, {
+      dataPort: u8(cfg.dataPort, 0x01),
+      statusPort: u8(cfg.statusPort, 0x00),
+      readyMask: u8(cfg.readyMask, 0x01),
+    }),
+  claims: (cfg) => ({ ports: [u8(cfg.dataPort, 0x01), u8(cfg.statusPort, 0x00)] }),
+};
+
 /** Processor Technology VDM-1: a memory-mapped 64×16 character display, bound to a monitor. */
 export const vdmKernel: CardKernel = {
   id: 'vdm-video',
@@ -86,6 +107,6 @@ export const vdmKernel: CardKernel = {
 };
 
 /** All built-in behavior kernels, keyed by id. */
-export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel, vdmKernel];
+export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel, keyboardKernel, vdmKernel];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);
