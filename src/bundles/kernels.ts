@@ -5,6 +5,8 @@ import { ParallelCard, type PortDirection } from '../cards/ParallelCard.js';
 import { KeyboardCard } from '../cards/KeyboardCard.js';
 import { VdmCard } from '../cards/VdmCard.js';
 import { DazzlerCard } from '../cards/DazzlerCard.js';
+import { RtcCard, type RtcClock } from '../cards/RtcCard.js';
+import { BankRamCard } from '../cards/BankRamCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
 const u16 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xffff : fallback);
@@ -123,6 +125,45 @@ export const dazzlerKernel: CardKernel = {
   // No `memory`: the Dazzler DMAs ordinary system RAM, so it declares no region.
 };
 
+/** National MM58167 real-time clock: BCD time registers on an I/O window, bound to the host clock. */
+export const rtcKernel: CardKernel = {
+  id: 'mm58167-rtc',
+  label: 'MM58167 real-time clock',
+  type: 'rtc',
+  binding: 'clock',
+  configSchema: {
+    base: { type: 'u8', default: 0x40, min: 0, max: 0xe0, description: 'Base I/O port (occupies base..base+0x1F)' },
+  },
+  create: (id, cfg, ctx) =>
+    new RtcCard(id, { base: u8(cfg.base, 0x40) }, ctx.services.clock as RtcClock | undefined),
+  // 32 consecutive registers.
+  claims: (cfg) => {
+    const b = u8(cfg.base, 0x40);
+    return { ports: Array.from({ length: 0x20 }, (_v, i) => (b + i) & 0xff) };
+  },
+};
+
+/** Bank-switching RAM: N banks of RAM behind a fixed window, selected by an I/O port (>64K). */
+export const bankRamKernel: CardKernel = {
+  id: 'bank-ram',
+  label: 'Bank-switching RAM (MMU)',
+  type: 'memory',
+  configSchema: {
+    window: { type: 'u16', default: 0xc000, min: 0, max: 0xffff, description: 'Switched window base address' },
+    size: { type: 'u16', default: 0x4000, min: 1, max: 0xffff, description: 'Bytes visible per bank' },
+    banks: { type: 'u8', default: 4, min: 1, max: 0xff, description: 'Number of RAM banks' },
+    selectPort: { type: 'u8', default: 0x40, min: 0, max: 0xff, description: 'Bank-select I/O port' },
+  },
+  create: (id, cfg) =>
+    new BankRamCard(id, {
+      window: u16(cfg.window, 0xc000),
+      size: u16(cfg.size, 0x4000),
+      banks: u8(cfg.banks, 4),
+      selectPort: u8(cfg.selectPort, 0x40),
+    }),
+  claims: (cfg) => ({ ports: [u8(cfg.selectPort, 0x40)] }),
+};
+
 /** All built-in behavior kernels, keyed by id. */
 export const kernels: ReadonlyArray<CardKernel> = [
   serialKernel,
@@ -130,6 +171,8 @@ export const kernels: ReadonlyArray<CardKernel> = [
   keyboardKernel,
   vdmKernel,
   dazzlerKernel,
+  rtcKernel,
+  bankRamKernel,
 ];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);
