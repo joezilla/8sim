@@ -1,6 +1,6 @@
 {
   "name": "@joezilla/8sim",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Intel 8080 / Zilog Z80 CPU simulator with an S-100 bus, pluggable cards, and a machine builder.",
   "type": "module",
   "main": "./dist/index.js",

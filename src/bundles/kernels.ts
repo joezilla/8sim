@@ -1,6 +1,7 @@
 import type { CardFactory } from '../machine/MachineSpec.js';
 import type { ConfigParamSpec, ClaimsFn } from './CardBundle.js';
 import { SerialCard, type SerialChip } from '../cards/SerialCard.js';
+import { ParallelCard, type PortDirection } from '../cards/ParallelCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
 
@@ -50,7 +51,22 @@ export const serialKernel: CardKernel = {
   claims: (cfg) => ({ ports: [u8(cfg.dataPort, 0x10), u8(cfg.ctrlPort, 0x11)] }),
 };
 
+/** A parallel I/O port: a single 8-bit latched port bound to GPIO (LEDs, switches, printer). */
+export const parallelKernel: CardKernel = {
+  id: 'parallel',
+  label: 'Parallel I/O port',
+  type: 'parallel',
+  binding: 'gpio',
+  configSchema: {
+    port: { type: 'u8', default: 0x00, min: 0, max: 0xff, description: 'I/O port' },
+    direction: { type: 'enum', default: 'out', enum: ['out', 'in', 'inout'], description: 'Data direction' },
+  },
+  create: (id, cfg) =>
+    new ParallelCard(id, { port: u8(cfg.port, 0x00), direction: (cfg.direction as PortDirection) ?? 'out' }),
+  claims: (cfg) => ({ ports: [u8(cfg.port, 0x00)] }),
+};
+
 /** All built-in behavior kernels, keyed by id. */
-export const kernels: ReadonlyArray<CardKernel> = [serialKernel];
+export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);

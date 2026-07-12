@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { kernels, kernelById, serialKernel } from '../../src/bundles/kernels.js';
+import { kernels, kernelById, serialKernel, parallelKernel } from '../../src/bundles/kernels.js';
 import { withDefaults } from '../../src/bundles/CardBundle.js';
 import { buildMachine } from '../../src/machine/buildMachine.js';
 import { InterruptController } from '../../src/interrupt/InterruptController.js';
@@ -58,5 +58,40 @@ describe('card behavior kernels (Story 5.7)', () => {
     );
     const card = serialKernel.create('sc', cfg, ctx) as { channel?: unknown };
     expect(card.channel).toBeDefined();
+  });
+
+  it('registers the parallel kernel, bound to gpio', () => {
+    expect(kernelById('parallel')).toBe(parallelKernel);
+    expect(parallelKernel.binding).toBe('gpio');
+    expect(parallelKernel.claims({ port: 0xff }).ports).toEqual([0xff]);
+  });
+
+  it('a parallel card exposes a GPIO surface: latches CPU writes, presents host input', () => {
+    const cfg = withDefaults(
+      { name: 'x', version: '1.0.0', type: 'parallel', configSchema: parallelKernel.configSchema },
+      { port: 0x40, direction: 'inout' },
+    );
+    const machine = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0,
+      // MVI A,0xA5 ; OUT 0x40 ; IN 0x40 ; HLT
+      memory: [
+        { id: 'rom', base: 0, size: 6, kind: 'rom', image: new Uint8Array([0x3e, 0xa5, 0xd3, 0x40, 0xdb, 0x40]) },
+      ],
+      cards: [{ id: 'gpio', factory: parallelKernel.create, config: cfg, claims: parallelKernel.claims(cfg) }],
+    });
+    const card = machine.cards[0] as { gpio: { read(): number; setInput(b: number): void; onOutput(cb: (b: number) => void): void; direction: string } };
+    const seen: number[] = [];
+    card.gpio.onOutput((b) => seen.push(b));
+    card.gpio.setInput(0x3c); // sense switches
+
+    let steps = 0;
+    while (!machine.cpu.halted && steps < 100) { machine.cpu.step(); steps++; }
+
+    expect(card.gpio.direction).toBe('inout');
+    expect(seen).toEqual([0xa5]); // OUT 0x40 latched the output + fired the callback
+    expect(card.gpio.read()).toBe(0xa5); // the latched output byte (drive LEDs)
+    expect(machine.cpu.registers.a).toBe(0x3c); // IN 0x40 read the host-driven input
   });
 });
