@@ -25,8 +25,9 @@ import type { WebSocketLike } from '../../src/cards/FdcPlusClient.js';
  * 0x13 (NOT the IMSAI SIO's 0x02/0x03), so channel A of the SIO card is placed
  * there. Observed init is the canonical 8251 sequence 40/CE/37.
  *
- * Requires the fdcplus-web server running on :3000 with drive 0 mounted, built
- * with the WS-transport-preference fix. Skips if the server is unreachable.
+ * Requires the fdcplus-web server running on :3000 with drive 0 mounted and
+ * multi-client serving enabled (opening /fdc-ws starts a per-client served loop
+ * via ConnectionManager.addWsClient). Skips if the server is unreachable.
  *
  * Run:  npx vitest run tests/integration/bootdisk.live.test.ts
  */
@@ -88,10 +89,15 @@ describe('LIVE 88-DSK boot over fdcplus-web WebSocket', () => {
       raw.addEventListener('error', (e) => reject(new Error(`WS error: ${String(e)}`)), { once: true });
       setTimeout(() => reject(new Error('WS open timeout')), 5000);
     });
-    // Force the server to rebind disk serving onto THIS ws client.
-    await fetch(`${BASE}/api/disk-serving/disable`, { method: 'POST', headers: AUTH });
-    const en = await fetch(`${BASE}/api/disk-serving/enable`, { method: 'POST', headers: AUTH });
-    console.log('disk-serving enable:', (await en.json()).message);
+    // Opening the /fdc-ws socket IS the bind: under multi-client serving the
+    // server spins up a dedicated copy-on-write served loop for this connection
+    // (ConnectionManager.addWsClient). Do NOT poke /api/disk-serving here — a
+    // disable→enable "rebind" ritual tears down the shared disk-serving server
+    // and, because enableDiskServing prefers a connected WS client over the
+    // serial port, rebinds serving onto THIS ephemeral socket. Closing the
+    // socket at teardown then leaves "Serve over serial" switched off on the
+    // server. Just give the server a beat to start our served loop before the
+    // CPU issues its first FDC command.
     await sleep(200);
 
     // --- Build the machine ---------------------------------------------------
@@ -180,8 +186,9 @@ describe('LIVE 88-DSK boot over fdcplus-web WebSocket', () => {
     console.log(`serial out : ${JSON.stringify(serialOut)}`);
     console.log('============================\n');
 
+    // Closing the socket ends this client's served loop; it does NOT touch the
+    // server's shared serial disk-serving state (see the connect-block note).
     raw.close();
-    await fetch(`${BASE}/api/disk-serving/disable`, { method: 'POST', headers: AUTH }).catch(() => {});
 
     // --- Assertions ----------------------------------------------------------
     // The DCDD was driven (drive select + head load) and the disk was read.
