@@ -4,6 +4,7 @@ import type { IInterruptController } from '../interfaces/IInterruptController.js
 import { Registers } from './Registers.js';
 import { Flags } from './Flags.js';
 import { Decoder } from './Decoder.js';
+import { buildStatusTable, FETCH_STATUS, INTA_STATUS } from './status8080.js';
 import { registerControl } from './instructions/control.js';
 import { registerData } from './instructions/data.js';
 import { registerAlu } from './instructions/alu.js';
@@ -24,6 +25,9 @@ export class Cpu8080 implements ICpu {
   inte = false;
   pendingEI = false;
   halted = false;
+  /** Front-panel status byte of the last instruction (Bitsby8 cockpit). */
+  private lastStatus = FETCH_STATUS;
+  private readonly statusTable = buildStatusTable();
 
   /** Program counter accessor (ICpu); proxies the register file. */
   get pc(): number { return this.registers.pc; }
@@ -32,7 +36,7 @@ export class Cpu8080 implements ICpu {
   /** Uniform register/flags snapshot for introspection (ICpu). */
   state(): CpuState {
     const r = this.registers;
-    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted };
+    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted, inte: this.inte, intPending: this.pic.hasPendingInterrupt(), status: this.lastStatus };
   }
 
   constructor(bus: IBus, pic: IInterruptController) {
@@ -61,6 +65,7 @@ export class Cpu8080 implements ICpu {
     this.inte = false;
     this.pendingEI = false;
     this.halted = false;
+    this.lastStatus = FETCH_STATUS;
   }
 
   step(): number {
@@ -89,6 +94,7 @@ export class Cpu8080 implements ICpu {
 
     const opcode = this.bus.read(regs.pc);
     regs.pc = u16(regs.pc + 1);
+    this.lastStatus = this.statusTable[opcode]!; // latch the panel status byte
 
     // Handle special opcodes inline
     if (opcode === 0x76) { // HLT
@@ -112,6 +118,7 @@ export class Cpu8080 implements ICpu {
   private handleInterrupt(): void {
     this.inte = false;
     this.halted = false;
+    this.lastStatus = INTA_STATUS;
     const rstByte = this.bus.acknowledgeInterrupt();
     const regs = this.registers;
     // Push current PC

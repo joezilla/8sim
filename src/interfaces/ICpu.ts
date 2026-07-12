@@ -36,4 +36,11 @@ export interface CpuState {
   h: number;
   l: number;
   halted: boolean;
+  /** Interrupt-enable flip-flop (8080 INTE / Z80 IFF1) — drives the panel INTE lamp. */
+  inte: boolean;
+  /** A maskable interrupt is currently asserted at the controller — the INT lamp. */
+  intPending: boolean;
+  /** 8080 status byte of the last instruction — drives the panel machine-cycle
+   * lamps (MEMR/INP/M1/OUT/STACK/WO/HLTA/INTA). See `status8080.ts`. */
+  status: number;
 }

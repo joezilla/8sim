@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildMachine } from '../../src/machine/buildMachine.js';
+import { STATUS } from '../../src/cpu/status8080.js';
 
 /** Front-panel introspection surface (Bitsby8 cockpit Phase 3): a running
  * machine exposes CPU state, a settable PC, bus examine/deposit, and pause/step
@@ -30,6 +31,53 @@ describe('CPU introspection for the front panel', () => {
       expect(s.pc).toBe(0xf802);
       expect(typeof s.f).toBe('number');
     }
+  });
+
+  it('cpu.state() exposes inte + intPending for the panel status lamps', () => {
+    const m = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0xf800,
+      // EI ; NOP ; NOP ; HLT  — EI takes effect after the following instruction (8080)
+      memory: [
+        { id: 'ram', base: 0, size: 0xf800, kind: 'ram' },
+        { id: 'rom', base: 0xf800, size: 4, kind: 'rom', image: new Uint8Array([0xfb, 0x00, 0x00, 0x76]) },
+      ],
+      cards: [],
+    });
+    expect(m.cpu.state().inte).toBe(false);
+    expect(m.cpu.state().intPending).toBe(false);
+    m.cpu.step(); // EI
+    m.cpu.step(); // NOP — interrupt-enable now latched on
+    expect(m.cpu.state().inte).toBe(true);
+  });
+
+  it('cpu.state().status latches the machine-cycle lamps per instruction', () => {
+    const m = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0xf800,
+      // IN 0 ; OUT 0 ; PUSH PSW ; HLT
+      memory: [
+        { id: 'ram', base: 0, size: 0xf800, kind: 'ram' },
+        { id: 'rom', base: 0xf800, size: 6, kind: 'rom', image: new Uint8Array([0xdb, 0x00, 0xd3, 0x00, 0xf5, 0x76]) },
+      ],
+      cards: [],
+    });
+    m.cpu.step(); // IN 0 → input cycle
+    expect(m.cpu.state().status & STATUS.INP).toBeTruthy();
+
+    m.cpu.step(); // OUT 0 → output write cycle (WO low)
+    expect(m.cpu.state().status & STATUS.OUT).toBeTruthy();
+    expect(m.cpu.state().status & STATUS.WO).toBe(0);
+
+    m.cpu.step(); // PUSH PSW → stack write
+    expect(m.cpu.state().status & STATUS.STACK).toBeTruthy();
+    expect(m.cpu.state().status & STATUS.WO).toBe(0);
+
+    m.cpu.step(); // HLT → halt acknowledge
+    expect(m.cpu.state().status & STATUS.HLTA).toBeTruthy();
+    expect(m.cpu.state().halted).toBe(true);
   });
 
   it('examine/deposit via the bus, and set PC (GO)', () => {

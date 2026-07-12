@@ -5,6 +5,7 @@ import type { Z80Core } from './types.js';
 import { RegistersZ80 } from './RegistersZ80.js';
 import { FlagsZ80 } from './FlagsZ80.js';
 import { DecoderZ80 } from './DecoderZ80.js';
+import { buildStatusTable, FETCH_STATUS, INTA_STATUS } from '../status8080.js';
 import { u16 } from '../../util/bits.js';
 
 /**
@@ -32,6 +33,9 @@ export class CpuZ80 implements ICpu, Z80Core {
   pendingEI = false;
   halted = false;
   private pendingNMI = false;
+  /** Front-panel status byte of the last instruction (8080-style approximation). */
+  private lastStatus = FETCH_STATUS;
+  private readonly statusTable = buildStatusTable();
 
   constructor(bus: IBus, pic: IInterruptController) {
     this.bus = bus;
@@ -46,7 +50,7 @@ export class CpuZ80 implements ICpu, Z80Core {
   /** Uniform register/flags snapshot for introspection (ICpu). */
   state(): CpuState {
     const r = this.regs;
-    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted };
+    return { pc: r.pc, sp: r.sp, a: r.a, f: this.flags.toByte(), b: r.b, c: r.c, d: r.d, e: r.e, h: r.h, l: r.l, halted: this.halted, inte: this.iff1, intPending: this.pic.hasPendingInterrupt(), status: this.lastStatus };
   }
 
   /** Assert a non-maskable interrupt (edge-triggered latch; serviced next step). */
@@ -92,6 +96,7 @@ export class CpuZ80 implements ICpu, Z80Core {
     this.pendingEI = false;
     this.halted = false;
     this.pendingNMI = false;
+    this.lastStatus = FETCH_STATUS;
   }
 
   step(): number {
@@ -129,6 +134,7 @@ export class CpuZ80 implements ICpu, Z80Core {
       op = this.fetchByte();
       this.regs.incR();
     }
+    this.lastStatus = this.statusTable[op]!; // latch the panel status byte
     return prefixT + table[op]!(this);
   }
 
@@ -136,6 +142,7 @@ export class CpuZ80 implements ICpu, Z80Core {
     this.iff1 = false;
     this.iff2 = false;
     this.halted = false;
+    this.lastStatus = INTA_STATUS;
     this.regs.incR();
     const ackByte = this.bus.acknowledgeInterrupt();
     switch (this.im) {
