@@ -22,11 +22,22 @@ import { MachineSpecError } from '../../machine/MachineSpec.js';
 const u8 = (v: unknown, fallback: number): number =>
   typeof v === 'number' ? v & 0xff : fallback;
 
+const u16 = (v: unknown, fallback: number): number =>
+  typeof v === 'number' ? v & 0xffff : fallback;
+
 /** Wrap a bare IIODevice as an IS100Card (attach → attachIODevice). */
 const deviceCard = (id: string, dev: IIODevice): IS100Card => ({
   id,
   reset: () => dev.reset(),
   attach: (bus) => bus.attachIODevice(dev),
+});
+
+/** A memory card contributes no I/O device — its region is hoisted into the
+ * machine's memory map and attached there, so the card itself is a no-op on the bus. */
+const memoryCard = (id: string): IS100Card => ({
+  id,
+  reset: () => {},
+  attach: () => {},
 });
 
 export const mits2SioBundle: CardBundle = {
@@ -176,6 +187,50 @@ export const tr1602Bundle: CardBundle = {
   claims: (cfg) => ({ ports: [u8(cfg.dataPort, 0x00), u8(cfg.statusPort, 0x01)] }),
 };
 
+/** Static RAM card — maps RAM at a base address for a size. A memory card:
+ * contributes no I/O device, only a RAM region hoisted into the memory map. */
+export const ramCardBundle: CardBundle = {
+  manifest: {
+    name: 'ram-card',
+    version: '1.0.0',
+    type: 'memory',
+    kind: 'card',
+    maker: 'generic',
+    summary: 'Static RAM board — maps read/write RAM at a configurable base address.',
+    configSchema: {
+      base: { type: 'u16', default: 0x0000, min: 0, max: 0xffff, description: 'Start address' },
+      size: { type: 'u16', default: 0x4000, min: 1, max: 0xffff, description: 'Bytes of RAM' },
+    },
+  },
+  cardFactory: (id) => memoryCard(id),
+  claims: () => ({ ports: [] }),
+  memory: (cfg) => [{ id: 'ram', base: u16(cfg.base, 0x0000), size: u16(cfg.size, 0x4000), kind: 'ram' }],
+};
+
+/** EPROM card — maps a ROM at a base address. The chip ships empty (zero-filled);
+ * an image is burned in later. A memory card: no I/O, just a ROM region. */
+export const epromCardBundle: CardBundle = {
+  manifest: {
+    name: 'eprom-card',
+    version: '1.0.0',
+    type: 'memory',
+    kind: 'card',
+    maker: 'generic',
+    summary: 'EPROM board — maps a read-only region at a base address; burn a .bin/Intel-HEX image into it.',
+    configSchema: {
+      base: { type: 'u16', default: 0xf000, min: 0, max: 0xffff, description: 'Start address' },
+      size: { type: 'u16', default: 0x0800, min: 1, max: 0xffff, description: 'EPROM size in bytes' },
+    },
+  },
+  cardFactory: (id) => memoryCard(id),
+  claims: () => ({ ports: [] }),
+  memory: (cfg) => {
+    const base = u16(cfg.base, 0xf000);
+    const size = u16(cfg.size, 0x0800);
+    return [{ id: 'rom', base, size, kind: 'rom', image: new Uint8Array(size) }];
+  },
+};
+
 /** All built-in seed bundles, keyed by manifest name. */
 export const seedBundles: ReadonlyArray<CardBundle> = [
   mits2SioBundle,
@@ -186,6 +241,8 @@ export const seedBundles: ReadonlyArray<CardBundle> = [
   mc6850Bundle,
   port8212Bundle,
   tr1602Bundle,
+  ramCardBundle,
+  epromCardBundle,
 ];
 
 export const seedBundleByName = (name: string): CardBundle | undefined =>

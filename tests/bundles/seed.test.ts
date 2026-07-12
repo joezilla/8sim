@@ -64,6 +64,35 @@ describe('seed card bundles', () => {
     }
   });
 
+  it('memory cards (RAM/EPROM) declare regions, not I/O, and build into the memory map', () => {
+    const ram = seedBundles.find((b) => b.manifest.name === 'ram-card')!;
+    const eprom = seedBundles.find((b) => b.manifest.name === 'eprom-card')!;
+    expect(ram.memory).toBeDefined();
+    expect(eprom.memory).toBeDefined();
+    expect(ram.claims({}).ports).toEqual([]); // no I/O footprint
+
+    expect(ram.memory!(withDefaults(ram.manifest, { base: 0x0000, size: 0x4000 }))).toEqual([
+      { id: 'ram', base: 0, size: 0x4000, kind: 'ram' },
+    ]);
+
+    const rom = eprom.memory!(withDefaults(eprom.manifest, { base: 0xf800, size: 0x0800 }));
+    expect(rom[0]).toMatchObject({ id: 'rom', base: 0xf800, size: 0x0800, kind: 'rom' });
+    expect(rom[0].image!.length).toBe(0x0800); // rom size === image length
+
+    // Hoisted into spec.memory, RAM + EPROM regions build a valid machine.
+    const m = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0,
+      memory: [
+        ...ram.memory!(withDefaults(ram.manifest, { base: 0x0000, size: 0x8000 })),
+        ...eprom.memory!(withDefaults(eprom.manifest, { base: 0xf800, size: 0x0100 })),
+      ],
+      cards: [],
+    });
+    expect(m.cpu).toBeDefined();
+  });
+
   it('derives collision-valid claims from schema defaults', () => {
     for (const b of seedBundles) {
       const cfg = withDefaults(b.manifest);

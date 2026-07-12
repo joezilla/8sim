@@ -1,4 +1,4 @@
-import type { CardFactory } from '../machine/MachineSpec.js';
+import type { CardFactory, MemoryRegionSpec } from '../machine/MachineSpec.js';
 
 /**
  * Declarative description of a card's configurable surface — the source both
@@ -44,15 +44,23 @@ export type ClaimsFn = (config: Record<string, unknown>) => {
   irq?: number | null;
 };
 
+/** Resolved config → the memory region(s) this card maps onto the bus. A memory
+ * card (RAM/EPROM board) resolves to regions; the host hoists them into the
+ * machine's declared `MachineSpec.memory` so they're overlap-validated (see the
+ * buildMachine note). Absent on pure I/O cards. */
+export type MemoryFn = (config: Record<string, unknown>) => MemoryRegionSpec[];
+
 /**
  * A self-contained card bundle (AR-5): the manifest (data) + the uniform
  * factory (code) + a claims deriver. Seed bundles wrap the built-in 8sim card
- * classes; downstream bundles have the same shape.
+ * classes; downstream bundles have the same shape. A `memory` card additionally
+ * declares the RAM/ROM region(s) it maps — resolved into the machine's memory map.
  */
 export interface CardBundle {
   manifest: CardManifest;
   cardFactory: CardFactory;
   claims: ClaimsFn;
+  memory?: MemoryFn;
 }
 
 /** Thrown when a card config violates its manifest's Config Schema. */
