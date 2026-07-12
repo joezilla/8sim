@@ -4,6 +4,7 @@ import { SerialCard, type SerialChip } from '../cards/SerialCard.js';
 import { ParallelCard, type PortDirection } from '../cards/ParallelCard.js';
 import { KeyboardCard } from '../cards/KeyboardCard.js';
 import { VdmCard } from '../cards/VdmCard.js';
+import { DazzlerCard } from '../cards/DazzlerCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
 const u16 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xffff : fallback);
@@ -106,7 +107,29 @@ export const vdmKernel: CardKernel = {
   memory: (cfg) => [{ id: 'vram', base: u16(cfg.base, 0xcc00), size: 0x400, kind: 'ram' }],
 };
 
+/** Cromemco Dazzler: a DMA colour-graphics card driven by two I/O ports, bound to a monitor. */
+export const dazzlerKernel: CardKernel = {
+  id: 'dazzler-video',
+  label: 'Cromemco Dazzler (colour graphics)',
+  type: 'video',
+  binding: 'display',
+  configSchema: {
+    controlPort: { type: 'u8', default: 0x0e, min: 0, max: 0xff, description: 'Control port (picture on + buffer page)' },
+    formatPort: { type: 'u8', default: 0x0f, min: 0, max: 0xff, description: 'Format port (resolution / colour)' },
+  },
+  create: (id, cfg) =>
+    new DazzlerCard(id, { controlPort: u8(cfg.controlPort, 0x0e), formatPort: u8(cfg.formatPort, 0x0f) }),
+  claims: (cfg) => ({ ports: [u8(cfg.controlPort, 0x0e), u8(cfg.formatPort, 0x0f)] }),
+  // No `memory`: the Dazzler DMAs ordinary system RAM, so it declares no region.
+};
+
 /** All built-in behavior kernels, keyed by id. */
-export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel, keyboardKernel, vdmKernel];
+export const kernels: ReadonlyArray<CardKernel> = [
+  serialKernel,
+  parallelKernel,
+  keyboardKernel,
+  vdmKernel,
+  dazzlerKernel,
+];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);
