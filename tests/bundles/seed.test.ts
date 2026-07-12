@@ -93,6 +93,31 @@ describe('seed card bundles', () => {
     expect(m.cpu).toBeDefined();
   });
 
+  it('CPU cards declare the processor (not I/O), carrying the power-on jump (Story 5.1)', () => {
+    const i8080 = seedBundles.find((b) => b.manifest.name === 'i8080-cpu')!;
+    const z80 = seedBundles.find((b) => b.manifest.name === 'z80-cpu')!;
+    expect(i8080.cpu).toBeDefined();
+    expect(z80.cpu).toBeDefined();
+    expect(i8080.claims({}).ports).toEqual([]); // no bus I/O footprint
+    expect(i8080.manifest.type).toBe('cpu');
+
+    expect(i8080.cpu!(withDefaults(i8080.manifest, { resetVector: 0xff00 }))).toEqual({
+      kind: 'i8080',
+      resetVector: 0xff00,
+    });
+    expect(z80.cpu!(withDefaults(z80.manifest, {})).kind).toBe('z80');
+
+    // A machine built with the CPU the card resolves to (Z80) runs.
+    const m = buildMachine({
+      cpuKind: z80.cpu!(withDefaults(z80.manifest, {})).kind,
+      clock: 'max',
+      resetVector: 0,
+      memory: [{ id: 'ram', base: 0, size: 0x10000, kind: 'ram' }],
+      cards: [],
+    });
+    expect(m.cpu).toBeDefined();
+  });
+
   it('derives collision-valid claims from schema defaults', () => {
     for (const b of seedBundles) {
       const cfg = withDefaults(b.manifest);

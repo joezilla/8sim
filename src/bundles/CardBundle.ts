@@ -1,4 +1,4 @@
-import type { CardFactory, MemoryRegionSpec } from '../machine/MachineSpec.js';
+import type { CardFactory, MemoryRegionSpec, CpuKind } from '../machine/MachineSpec.js';
 
 /**
  * Declarative description of a card's configurable surface — the source both
@@ -30,7 +30,7 @@ export interface CardManifest {
   /** Bundle name (Identity is `name@version`). */
   name: string;
   version: string; // semver
-  type: 'serial' | 'floppy' | 'memory' | 'panel' | 'other';
+  type: 'cpu' | 'serial' | 'floppy' | 'memory' | 'panel' | 'other';
   /** Bus-ontology kind: an S-100 board vs. a component chip. Defaults to `card`. */
   kind?: PrimitiveKind;
   maker?: string;
@@ -50,17 +50,29 @@ export type ClaimsFn = (config: Record<string, unknown>) => {
  * buildMachine note). Absent on pure I/O cards. */
 export type MemoryFn = (config: Record<string, unknown>) => MemoryRegionSpec[];
 
+/** Resolved config → the CPU this card provides. On real S-100 hardware the
+ * processor is a card (the 8080/Z80 CPU board), and it carries settings the bus
+ * doesn't — notably the power-on jump (`resetVector`), classically a CPU-card
+ * feature. A machine has exactly one CPU card; the host resolves its output into
+ * `MachineSpec.cpuKind`/`resetVector`. Absent on every non-CPU card. */
+export type CpuFn = (config: Record<string, unknown>) => {
+  kind: CpuKind;
+  resetVector?: number;
+};
+
 /**
  * A self-contained card bundle (AR-5): the manifest (data) + the uniform
  * factory (code) + a claims deriver. Seed bundles wrap the built-in 8sim card
  * classes; downstream bundles have the same shape. A `memory` card additionally
- * declares the RAM/ROM region(s) it maps — resolved into the machine's memory map.
+ * declares the RAM/ROM region(s) it maps; a `cpu` card declares the processor —
+ * both resolved by the host into the MachineSpec (memory map / CPU).
  */
 export interface CardBundle {
   manifest: CardManifest;
   cardFactory: CardFactory;
   claims: ClaimsFn;
   memory?: MemoryFn;
+  cpu?: CpuFn;
 }
 
 /** Thrown when a card config violates its manifest's Config Schema. */

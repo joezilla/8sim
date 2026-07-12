@@ -40,6 +40,16 @@ const memoryCard = (id: string): IS100Card => ({
   attach: () => {},
 });
 
+/** A CPU card is the bus master, not a bus device — buildMachine instantiates the
+ * processor from the resolved MachineSpec.cpuKind. On the bus the card is a no-op;
+ * its real output is the `cpu()` resolution. (Its front-panel control lines, which
+ * bypass the S-100 bus, are a future concern — not modeled here.) */
+const cpuCard = (id: string): IS100Card => ({
+  id,
+  reset: () => {},
+  attach: () => {},
+});
+
 export const mits2SioBundle: CardBundle = {
   manifest: {
     name: 'mits-88-2sio',
@@ -231,8 +241,47 @@ export const epromCardBundle: CardBundle = {
   },
 };
 
+/** Intel 8080 CPU card — the processor board. Declares the CPU family and the
+ * power-on jump (resetVector), authentically a CPU-card feature. No bus I/O. */
+export const i8080CpuBundle: CardBundle = {
+  manifest: {
+    name: 'i8080-cpu',
+    version: '1.0.0',
+    type: 'cpu',
+    kind: 'card',
+    maker: 'Intel',
+    summary: 'Intel 8080 CPU board — the bus master; sets the power-on jump address.',
+    configSchema: {
+      resetVector: { type: 'u16', default: 0x0000, min: 0, max: 0xffff, description: 'Power-on jump (program counter at reset)' },
+    },
+  },
+  cardFactory: (id) => cpuCard(id),
+  claims: () => ({ ports: [] }),
+  cpu: (cfg) => ({ kind: 'i8080', resetVector: u16(cfg.resetVector, 0x0000) }),
+};
+
+/** Zilog Z80 CPU card — 8080-compatible bus master with the Z80 instruction set. */
+export const z80CpuBundle: CardBundle = {
+  manifest: {
+    name: 'z80-cpu',
+    version: '1.0.0',
+    type: 'cpu',
+    kind: 'card',
+    maker: 'Zilog',
+    summary: 'Zilog Z80 CPU board — the bus master; sets the power-on jump address.',
+    configSchema: {
+      resetVector: { type: 'u16', default: 0x0000, min: 0, max: 0xffff, description: 'Power-on jump (program counter at reset)' },
+    },
+  },
+  cardFactory: (id) => cpuCard(id),
+  claims: () => ({ ports: [] }),
+  cpu: (cfg) => ({ kind: 'z80', resetVector: u16(cfg.resetVector, 0x0000) }),
+};
+
 /** All built-in seed bundles, keyed by manifest name. */
 export const seedBundles: ReadonlyArray<CardBundle> = [
+  i8080CpuBundle,
+  z80CpuBundle,
   mits2SioBundle,
   imsaiSioBundle,
   imsaiMioBundle,
