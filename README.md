@@ -18,6 +18,7 @@ Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 - EI/DI with correct one-instruction delay for EI
 - HLT with interrupt wake
 - Real-time and immediate-mode clocks
+- **Declarative machine assembly**: build a whole machine from a `MachineSpec` — including S-100 **card bundles** for CPU, RAM, EPROM, and serial/floppy peripherals
 - Browser-safe: no Node.js globals in core library
 
 ---
@@ -307,6 +308,65 @@ class BankedRam implements IMemory {
 
 ---
 
+## Card Bundles & Machine Assembly
+
+The Quick Start above wires a machine by hand. For declarative assembly, describe
+the machine as data (a `MachineSpec`) and let `buildMachine` construct it — memory
+regions attached in order, then cards, then the CPU. This is the layer host
+applications (e.g. a machine-profile builder) target.
+
+```ts
+import { buildMachine } from '@joezilla/8sim';
+
+const machine = buildMachine({
+  cpuKind: 'i8080',                 // or 'z80'
+  clock: 'max',                     // or { hz: 2_000_000 }
+  resetVector: 0xff00,              // program counter at power-on
+  memory: [
+    { id: 'ram',  base: 0x0000, size: 0xff00, kind: 'ram' },
+    { id: 'boot', base: 0xff00, size: rom.length, kind: 'rom', image: rom },
+  ],
+  cards: [/* CardSpec[] — see bundles below */],
+});
+machine.cpu.step();
+```
+
+Overlapping memory regions and colliding I/O ports are rejected at build time
+(`MachineSpecError`) rather than silently last-writer-wins.
+
+### Seed card bundles
+
+An S-100 machine is assembled from **cards**. A `CardBundle` packages a card's
+manifest (its configurable surface), a uniform `cardFactory`, and — depending on
+the card — one of three **resolution outputs**:
+
+| Output | Declared by | Cards |
+| --- | --- | --- |
+| **I/O device** | `claims(config)` → ports/IRQ | `imsai-sio2`, `mits-88-2sio`, `imsai-mio`, `mits-88-dcdd` (+ chip-level `intel-8251`, `motorola-6850`, `intel-8212`, `tr1602-uart`) |
+| **Memory region** | `memory(config)` → `MemoryRegionSpec[]` | `ram-card`, `eprom-card` |
+| **CPU** | `cpu(config)` → `{ kind, resetVector? }` | `i8080-cpu`, `z80-cpu` |
+
+On real S-100 hardware the processor and memory are boards, so here they're cards
+too: a **RAM/EPROM card** resolves to a memory region (hoisted into the machine's
+memory map), and a **CPU card** is the bus master that sets the machine's CPU and
+power-on jump. Memory and CPU cards are no-ops on the bus itself.
+
+```ts
+import { seedBundles, seedBundleByName, withDefaults } from '@joezilla/8sim';
+
+const cpu = seedBundleByName('z80-cpu')!;
+const cfg = withDefaults(cpu.manifest, { resetVector: 0xf800 }); // validates against the schema
+const resolved = cpu.cpu!(cfg);        // → { kind: 'z80', resetVector: 0xf800 }
+const region  = seedBundleByName('ram-card')!.memory!(withDefaults(/* ... */)); // → MemoryRegionSpec[]
+```
+
+`seedBundles` is the full registry; each bundle's `manifest.configSchema` drives
+config validation (`withDefaults` throws `CardConfigError` on an out-of-range
+value), and `manifest.kind` distinguishes a real S-100 `card` from a component
+`chip`.
+
+---
+
 ## Integration Testing: cpudiag.com
 
 The repository includes a CP/M CPU diagnostic integration test. To run it:
@@ -404,7 +464,10 @@ src/
 ├── io/                     — IoSpace
 ├── interrupt/              — InterruptController
 ├── clock/                  — ImmediateClock, SystemClock
-├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule
+├── machine/                — buildMachine, MachineSpec, MachineRunner
+├── cards/                  — S-100 card classes (SIO, MIO, DCDD, 8251, 6850, …)
+├── bundles/                — CardBundle + seed/ registry (CPU, RAM, EPROM, serial, floppy)
+├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule IS100Card
 └── util/bits.ts            — u8 u16 signBit zeroFlag parityFlag auxCarryAdd toWord hi lo
 tests/
 ├── cpu/                    — per-instruction-group unit tests + interrupt tests
