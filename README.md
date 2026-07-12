@@ -1,6 +1,8 @@
-# 8sim — Intel 8080 / Zilog Z80 CPU Simulator
+# 8sim — S-100 Bus Machine Emulator (Intel 8080 / Zilog Z80)
 
-A modular, extensible Intel 8080 **and** Zilog Z80 CPU simulator written in TypeScript. The CPU core is cleanly separated from memory, I/O, and bus peripherals behind well-defined interfaces, making every component independently testable and swappable — including the CPU itself, which is pluggable between the 8080 and a full Z80.
+An **S-100 bus microcomputer emulator** written in TypeScript. 8sim models the machine the way the hardware was actually built: a passive backplane (`Bus`) into which you plug **cards** — a CPU board, RAM and EPROM boards, serial and floppy-controller boards. Everything sits behind well-defined interfaces, so every card is independently testable and swappable, and even the processor is just another card — pluggable between the Intel **8080** and a full Zilog **Z80**.
+
+Assemble a machine imperatively (attach memory and cards by hand) or declaratively (describe it as a `MachineSpec` and let `buildMachine` construct it, rejecting bus collisions at build time). Boot period software — stock Altair CP/M boots unmodified on either CPU.
 
 Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 
@@ -8,18 +10,15 @@ Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 
 ## Features
 
-- Complete Intel 8080 instruction set
-- **Pluggable CPU**: full Zilog Z80 core alongside the 8080 (validated against ZEXDOC + ZEXALL)
-- Pluggable bus architecture (S-100 bus style)
-- Memory-mapped I/O support
-- Interrupt controller with RST vector dispatch
-- ROM write protection
-- Accurate flag behavior (S, Z, AC, P, CY)
-- EI/DI with correct one-instruction delay for EI
-- HLT with interrupt wake
-- Real-time and immediate-mode clocks
-- **Declarative machine assembly**: build a whole machine from a `MachineSpec` — including S-100 **card bundles** for CPU, RAM, EPROM, and serial/floppy peripherals
-- Browser-safe: no Node.js globals in core library
+- **S-100 machine model**: passive `Bus` backplane, pluggable cards, 16-bit memory space + 8-bit I/O space + interrupt controller
+- **Card catalog**: real period cards modeled as bus devices — MITS 88-2SIO, IMSAI SIO-2, IMSAI MIO, MITS 88-DCDD floppy controller, plus the component chips they're built from (8251, 6850, 8212, TR1602)
+- **Pluggable CPU cards**: complete Intel 8080 instruction set, and a full Zilog Z80 core (validated against ZEXDOC + ZEXALL) — same bus, same constructor
+- **Declarative machine assembly**: build a whole machine from a `MachineSpec`; overlapping memory and colliding I/O ports are rejected at build time
+- **Card bundles**: self-describing packages (config schema + factory) for CPU, RAM, EPROM, and serial/floppy cards
+- Memory-mapped I/O, ROM write protection, and a snooping bus for tracing/debug
+- Interrupt controller with RST vector dispatch; accurate flags; EI/DI one-instruction delay; HLT with interrupt wake
+- Real-time (authentic 2 MHz) and immediate-mode clocks
+- Browser-safe: no Node.js globals in the core library
 
 ---
 
@@ -106,6 +105,46 @@ The CPU holds only a reference to `IBus`. All memory, I/O, and interrupt logic i
 const uart = new MyUart();
 bus.attachIODevice(uart);                                    // I/O port access
 bus.attachMemory(new MemoryMappedIOAdapter(0xe000, 8, uart)); // memory access
+```
+
+### Bus Snooping
+
+`SnoopBus` wraps any `IBus` and forwards every memory/I/O access to a list of `IBusObserver`s before returning — a transparent tap for tracing, logging, or building a debugger, with no changes to the CPU or the cards.
+
+```ts
+const snoop = new SnoopBus(bus);
+snoop.attach({ onMemWrite: (addr, val) => log(`W ${addr.toString(16)}=${val.toString(16)}`) });
+const cpu = new Cpu8080(snoop, pic);
+```
+
+---
+
+## Cards
+
+A card is an `IS100Card` — a module with an `attach(bus)` method that wires itself onto the backplane (claiming I/O ports, memory regions, or IRQ lines). 8sim ships a catalog of real S-100 cards plus the component chips they're built from. Each is usable directly, or via its [card bundle](#card-bundles--machine-assembly) for declarative assembly.
+
+| Card | Maker (year) | What it is |
+|------|--------------|-----------|
+| **88-2SIO** (`mits-88-2sio`) | MITS | Dual serial board (2× 6850 ACIA). The assumed console for nearly all Altair software — attach this to boot Altair CP/M. |
+| **SIO-2** (`imsai-sio2`) | IMSAI | Dual 8251 serial card with a board-control port. |
+| **MIO** (`imsai-mio`) | IMSAI | Multi-I/O board: a TR1602 UART serial port plus two 8212 parallel ports. |
+| **88-DCDD** (`mits-88-dcdd`) | MITS | 8-inch floppy disk controller; disk I/O flows over an FDC channel (e.g. an fdcplus-web server). |
+
+Component chips, usable standalone or as building blocks for a card:
+
+| Chip | What it is |
+|------|-----------|
+| **Intel 8251** (`intel-8251`) | USART — data + control port |
+| **Motorola 6850** (`motorola-6850`) | ACIA — status + data port |
+| **Intel 8212** (`intel-8212`) | 8-bit parallel I/O port |
+| **TR1602** (`tr1602-uart`) | UART — data + status port |
+
+```ts
+import { Bus, InterruptController, Mits2SioCard } from '@joezilla/8sim';
+
+const bus = new Bus(new InterruptController());
+const console = new Mits2SioCard('sio', { basePort: 0x10 }); // Altair console at 0x10/0x11
+console.attach(bus);   // claims ports 0x10–0x13
 ```
 
 ---
@@ -259,7 +298,26 @@ The pacing engine used by `MachineRunner` — a T-state counter with a target fr
 
 ---
 
-## Implementing Peripherals
+## Implementing Cards & Peripherals
+
+### Custom Card
+
+An `IS100Card` bundles one or more devices and wires them onto the bus in its `attach(bus)` method — this is how the built-in cards (88-2SIO, MIO, …) are structured.
+
+```ts
+import type { IS100Card } from '@joezilla/8sim';
+import { Bus, Usart8251 } from '@joezilla/8sim';
+
+class ConsoleCard implements IS100Card {
+  readonly id = 'console';
+  private uart = new Usart8251('uart', 0x10, 0x11);
+
+  attach(bus: Bus): void { bus.attachIODevice(this.uart); } // claims ports 0x10/0x11
+  reset(): void { this.uart.reset(); }
+}
+```
+
+A card can just as well claim a memory region (attach a `Ram`/`Rom`/`MemoryMappedIOAdapter`) or combine both. The devices it attaches implement the interfaces below.
 
 ### Custom I/O Device
 
@@ -459,15 +517,15 @@ src/
 │       ├── DecoderZ80.ts   — main/IX/IY + CB/ED/DDCB tables
 │       ├── flagHelpers.ts  — shared flag math (X/Y aware)
 │       └── instructions/   — one file per Z80 instruction group
-├── bus/                    — Bus, BusRegion
+├── bus/                    — Bus (backplane), BusRegion, SnoopBus (tracing tap)
 ├── memory/                 — Ram, Rom, MemoryMappedIOAdapter
 ├── io/                     — IoSpace
 ├── interrupt/              — InterruptController
 ├── clock/                  — ImmediateClock, SystemClock
 ├── machine/                — buildMachine, MachineSpec, MachineRunner
-├── cards/                  — S-100 card classes (SIO, MIO, DCDD, 8251, 6850, …)
+├── cards/                  — S-100 card classes (88-2SIO, SIO-2, MIO, 88-DCDD, 8251, 6850, 8212, TR1602)
 ├── bundles/                — CardBundle + seed/ registry (CPU, RAM, EPROM, serial, floppy)
-├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule IS100Card
+├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule IS100Card IBusObserver
 └── util/bits.ts            — u8 u16 signBit zeroFlag parityFlag auxCarryAdd toWord hi lo
 tests/
 ├── cpu/                    — per-instruction-group unit tests + interrupt tests
