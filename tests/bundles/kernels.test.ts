@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { kernels, kernelById, serialKernel, parallelKernel } from '../../src/bundles/kernels.js';
+import { kernels, kernelById, serialKernel, parallelKernel, vdmKernel } from '../../src/bundles/kernels.js';
 import { withDefaults } from '../../src/bundles/CardBundle.js';
 import { buildMachine } from '../../src/machine/buildMachine.js';
 import { InterruptController } from '../../src/interrupt/InterruptController.js';
@@ -64,6 +64,43 @@ describe('card behavior kernels (Story 5.7)', () => {
     expect(kernelById('parallel')).toBe(parallelKernel);
     expect(parallelKernel.binding).toBe('gpio');
     expect(parallelKernel.claims({ port: 0xff }).ports).toEqual([0xff]);
+  });
+
+  it('registers the VDM kernel: a memory-mapped char display bound to a monitor', () => {
+    expect(kernelById('vdm-video')).toBe(vdmKernel);
+    expect(vdmKernel.binding).toBe('display');
+    expect(vdmKernel.claims({}).ports).toEqual([]); // no I/O — it's memory-mapped
+    // Declares its 1K video RAM as a region (overlap-validated + on the ribbon).
+    expect(vdmKernel.memory!({ base: 0xcc00 })).toEqual([{ id: 'vram', base: 0xcc00, size: 0x400, kind: 'ram' }]);
+  });
+
+  it('the VDM display reflects what the CPU writes to video RAM (Story 5.9)', () => {
+    const cfg = withDefaults(
+      { name: 'x', version: '1.0.0', type: 'video', configSchema: vdmKernel.configSchema },
+      { base: 0xcc00 },
+    );
+    const machine = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0,
+      // MVI A,'H'(0x48) ; STA 0xCC00 ; MVI A,'i'(0x69) ; STA 0xCC01 ; HLT
+      memory: [
+        { id: 'rom', base: 0, size: 11, kind: 'rom', image: new Uint8Array([0x3e, 0x48, 0x32, 0x00, 0xcc, 0x3e, 0x69, 0x32, 0x01, 0xcc, 0x76]) },
+        ...vdmKernel.memory!(cfg), // the video RAM region
+      ],
+      cards: [{ id: 'vdm', factory: vdmKernel.create, config: cfg, claims: vdmKernel.claims(cfg) }],
+    });
+    const card = machine.cards[0] as { display: { descriptor: { mode: string; cols: number; rows: number }; frame(): { bytes: Uint8Array } } };
+    expect(card.display.descriptor).toMatchObject({ mode: 'charGrid', cols: 64, rows: 16 });
+
+    let steps = 0;
+    while (!machine.cpu.halted && steps < 200) { machine.cpu.step(); steps++; }
+
+    const frame = card.display.frame();
+    expect(frame.bytes.length).toBe(0x400);
+    // "Hi" landed at the top-left of the character buffer.
+    expect(frame.bytes[0]).toBe(0x48);
+    expect(frame.bytes[1]).toBe(0x69);
   });
 
   it('a parallel card exposes a GPIO surface: latches CPU writes, presents host input', () => {

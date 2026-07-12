@@ -58,12 +58,15 @@ export type {
 export { withDefaults, CardConfigError } from './bundles/CardBundle.js';
 export type { CardBundle, CardManifest, ConfigParamSpec, ClaimsFn } from './bundles/CardBundle.js';
 export { seedBundles, seedBundleByName } from './bundles/seed/index.js';
-export { kernels, kernelById, serialKernel, parallelKernel } from './bundles/kernels.js';
+export { kernels, kernelById, serialKernel, parallelKernel, vdmKernel } from './bundles/kernels.js';
 export type { CardKernel } from './bundles/kernels.js';
 export { SerialCard } from './cards/SerialCard.js';
 export type { SerialChip, SerialCardOptions } from './cards/SerialCard.js';
 export { ParallelCard } from './cards/ParallelCard.js';
 export type { PortDirection, ParallelCardOptions, GpioPort } from './cards/ParallelCard.js';
+export { VdmCard } from './cards/VdmCard.js';
+export type { VdmCardOptions } from './cards/VdmCard.js';
+export type { DisplaySurface, DisplayDescriptor, DisplayFrame } from './cards/DisplaySurface.js';
 
 // Cards
 export { Usart8251 } from './cards/Usart8251.js';

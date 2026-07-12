@@ -1,9 +1,11 @@
-import type { CardFactory } from '../machine/MachineSpec.js';
+import type { CardFactory, MemoryRegionSpec } from '../machine/MachineSpec.js';
 import type { ConfigParamSpec, ClaimsFn } from './CardBundle.js';
 import { SerialCard, type SerialChip } from '../cards/SerialCard.js';
 import { ParallelCard, type PortDirection } from '../cards/ParallelCard.js';
+import { VdmCard } from '../cards/VdmCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
+const u16 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xffff : fallback);
 
 /**
  * Card behavior kernels (Bitsby8 Story 5.7).
@@ -29,6 +31,9 @@ export interface CardKernel {
   create: CardFactory;
   /** Declared bus resources for define-time collision checks. */
   claims: ClaimsFn;
+  /** Memory region(s) this kernel's card maps — e.g. a video card's RAM. Hoisted
+   * into MachineSpec.memory so it's overlap-validated and shows on the ribbon. */
+  memory?: (config: Record<string, unknown>) => MemoryRegionSpec[];
 }
 
 /** A serial (UART) console card: a data + status/control port, bound to a terminal. */
@@ -66,7 +71,21 @@ export const parallelKernel: CardKernel = {
   claims: (cfg) => ({ ports: [u8(cfg.port, 0x00)] }),
 };
 
+/** Processor Technology VDM-1: a memory-mapped 64×16 character display, bound to a monitor. */
+export const vdmKernel: CardKernel = {
+  id: 'vdm-video',
+  label: 'VDM-1 video (64×16 characters)',
+  type: 'video',
+  binding: 'display',
+  configSchema: {
+    base: { type: 'u16', default: 0xcc00, min: 0, max: 0xffff, description: 'Video RAM base' },
+  },
+  create: (id, cfg) => new VdmCard(id, { base: u16(cfg.base, 0xcc00) }),
+  claims: () => ({ ports: [] }),
+  memory: (cfg) => [{ id: 'vram', base: u16(cfg.base, 0xcc00), size: 0x400, kind: 'ram' }],
+};
+
 /** All built-in behavior kernels, keyed by id. */
-export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel];
+export const kernels: ReadonlyArray<CardKernel> = [serialKernel, parallelKernel, vdmKernel];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);
