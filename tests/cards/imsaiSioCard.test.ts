@@ -93,27 +93,20 @@ describe('ImsaiSioCard — RX end-to-end', () => {
   });
 });
 
-describe('ImsaiSioCard — board control port reset', () => {
-  it('writing bits 0-1 to board ctrl resets channel A', () => {
+describe('ImsaiSioCard — board control port is a latch (no USART reset)', () => {
+  // The IMSAI SIO-2 board control register just latches the written value; it
+  // does NOT reset the on-board USARTs (matches z80pack's imsai_sio1_ctl_out).
+  // IMDOS writes a control word here AFTER enabling the transmitter, so a reset
+  // would clear TxRDY and hang the console.
+  it('writing the board ctrl port does not disturb an enabled channel', () => {
     const bus = makeBus();
     const card = new ImsaiSioCard();
     card.attach(bus);
     bus.ioWrite(0x03, 0x4e);
     bus.ioWrite(0x03, 0x01); // TxEN=1 on A
     expect(bus.ioRead(0x03) & 0x01).toBe(1);
-    bus.ioWrite(0x08, 0x01); // board ctrl: reset A
-    expect(bus.ioRead(0x03) & 0x01).toBe(0); // TxRDY gone
-  });
-
-  it('writing bits 2-3 to board ctrl resets channel B', () => {
-    const bus = makeBus();
-    const card = new ImsaiSioCard();
-    card.attach(bus);
-    bus.ioWrite(0x05, 0x4e);
-    bus.ioWrite(0x05, 0x01); // TxEN=1 on B
-    expect(bus.ioRead(0x05) & 0x01).toBe(1);
-    bus.ioWrite(0x08, 0x04); // board ctrl: reset B
-    expect(bus.ioRead(0x05) & 0x01).toBe(0);
+    bus.ioWrite(0x08, 0x22); // board ctrl word (as IMDOS writes) — must NOT reset A
+    expect(bus.ioRead(0x03) & 0x01).toBe(1); // TxRDY still set
   });
 });
 

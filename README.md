@@ -11,7 +11,7 @@ Runs in Node.js, browsers, Deno, and Bun — zero runtime dependencies.
 ## Features
 
 - **S-100 machine model**: passive `Bus` backplane, pluggable cards, 16-bit memory space + 8-bit I/O space + interrupt controller
-- **Card catalog**: real period cards modeled as bus devices — MITS 88-2SIO, IMSAI SIO-2, IMSAI MIO, MITS 88-DCDD floppy controller, plus the component chips they're built from (8251, 6850, 8212, TR1602)
+- **Card catalog**: real period cards modeled as bus devices — serial/parallel boards (MITS 88-2SIO, IMSAI SIO-2, IMSAI MIO, Processor Technology 3P+S) and four floppy/disk controllers (MITS 88-DCDD, IMSAI MDC-DIO, IMSAI FIF, Processor Technology Helios II), plus the component chips they're built from (8251, 6850, 8212, TR1602). Several boot real period operating systems — CP/M, IMDOS, and the SOLOS/CUTER monitors — unmodified.
 - **Pluggable CPU cards**: complete Intel 8080 instruction set, and a full Zilog Z80 core (validated against ZEXDOC + ZEXALL) — same bus, same constructor
 - **Declarative machine assembly**: build a whole machine from a `MachineSpec`; overlapping memory and colliding I/O ports are rejected at build time
 - **Card bundles**: self-describing packages (config schema + factory) for CPU, RAM, EPROM, and serial/floppy cards
@@ -123,12 +123,18 @@ const cpu = new Cpu8080(snoop, pic);
 
 A card is an `IS100Card` — a module with an `attach(bus)` method that wires itself onto the backplane (claiming I/O ports, memory regions, or IRQ lines). 8sim ships a catalog of real S-100 cards plus the component chips they're built from. Each is usable directly, or via its [card bundle](#card-bundles--machine-assembly) for declarative assembly.
 
-| Card | Maker (year) | What it is |
-|------|--------------|-----------|
+| Card | Maker | What it is |
+|------|-------|-----------|
 | **88-2SIO** (`mits-88-2sio`) | MITS | Dual serial board (2× 6850 ACIA). The assumed console for nearly all Altair software — attach this to boot Altair CP/M. |
 | **SIO-2** (`imsai-sio2`) | IMSAI | Dual 8251 serial card with a board-control port. |
 | **MIO** (`imsai-mio`) | IMSAI | Multi-I/O board: a TR1602 UART serial port plus two 8212 parallel ports. |
-| **88-DCDD** (`mits-88-dcdd`) | MITS | 8-inch floppy disk controller; disk I/O flows over an FDC channel (e.g. an fdcplus-web server). |
+| **3P+S** (`proctech-3ps`) | Processor Technology | "3 Parallel + Serial" multifunction I/O board (4 consecutive ports) — a general-purpose UART plus two parallel ports, with the jumper-defined status-bit map, channel order, and A0-invert all configurable. Runs the **CUTER** monitor to a `>` prompt over serial. |
+| **88-DCDD** (`mits-88-dcdd`) | MITS | 8-inch floppy disk controller; byte-at-a-time programmed I/O over an FDC channel (e.g. an fdcplus-web server). |
+| **MDC-DIO** (`imsai-mdc-dio`) | IMSAI | Firmware-driven floppy controller living in a memory window at **E000–EFFF** (standard 8″ + mini drives, IBM 3740 format). Backed by an in-memory `.dsk` or fdcplus-web. |
+| **FIF** (`imsai-fif`) | IMSAI | Intelligent, DMA-capable floppy controller driven by a single command port (**0xFD**). Boots **IMDOS 2.02** to an `A>` prompt. In-memory or fdcplus-web backend. |
+| **Helios II** (`pt-helios`) | Processor Technology | Intelligent DMA 8″ disk controller for the SOL-20 (ports **F0–F7**), firm-sectored with variable-length blocks; driven by the SOLOS **BOOTLOAD** ROM. In-memory SVH image or fdcplus-web backend. |
+
+The floppy/disk controllers accept a disk over the same fdcplus-web channel used by `boot-cpm`, or an in-process image for self-contained use. See [Booting period software](#booting-period-software).
 
 Component chips, usable standalone or as building blocks for a card:
 
@@ -400,7 +406,7 @@ the card — one of three **resolution outputs**:
 
 | Output | Declared by | Cards |
 | --- | --- | --- |
-| **I/O device** | `claims(config)` → ports/IRQ | `imsai-sio2`, `mits-88-2sio`, `imsai-mio`, `mits-88-dcdd` (+ chip-level `intel-8251`, `motorola-6850`, `intel-8212`, `tr1602-uart`) |
+| **I/O device** | `claims(config)` → ports/IRQ | `imsai-sio2`, `mits-88-2sio`, `imsai-mio`, `proctech-3ps`, `mits-88-dcdd`, `imsai-mdc-dio`, `imsai-fif`, `pt-helios` (+ chip-level `intel-8251`, `motorola-6850`, `intel-8212`, `tr1602-uart`) |
 | **Memory region** | `memory(config)` → `MemoryRegionSpec[]` | `ram-card`, `eprom-card` |
 | **CPU** | `cpu(config)` → `{ kind, resetVector? }` | `i8080-cpu`, `z80-cpu` |
 
@@ -469,6 +475,22 @@ The live boot integration test (`tests/integration/bootdisk.live.test.ts`) uses 
 
 ---
 
+## Booting period software
+
+Beyond Altair CP/M, several cards boot their native period software. Each has an `npm run` script and works self-contained (bundled image / assembled ROM) or over fdcplus-web.
+
+| Command | What it boots | Card(s) |
+|---|---|---|
+| `npm run boot:cpm` | Altair **CP/M** to an `A>` prompt (interactive) | 88-DCDD + 8251 |
+| `npm run boot:fif` | IMSAI **IMDOS 2.02** to an `A>` prompt; try `DIR` | FIF + SIO-2 |
+| `npm run boot:cuter` | Processor Technology **CUTER** monitor (`>` prompt; `DU` dumps memory) over serial | 3P+S |
+| `npm run boot:helios` | Helios II boot: the genuine SOLOS **BOOTLOAD** ROM DMAs track 0 and runs it | Helios II + 3P+S |
+| `npm run example:3ps` | 3P+S serial echo — type and it echoes back | 3P+S |
+
+Boot ROMs and monitors live under `bios/` (e.g. the IMSAI MPU-A ROM for IMDOS, and the SOLOS-family sources under `bios/sol20/`, assembled by the `build-*.sh` scripts). `boot:fif` and `boot:helios` default to a bundled/synthetic image but switch to the fdcplus-web backend when `FDCPLUS_URL` is set (see the table above). These boots are also covered by guarded integration tests (they skip when the ROM/disk artifact is absent).
+
+---
+
 ## Browser Usage
 
 Build a single-file ESM bundle:
@@ -523,7 +545,12 @@ src/
 ├── interrupt/              — InterruptController
 ├── clock/                  — ImmediateClock, SystemClock
 ├── machine/                — buildMachine, MachineSpec, MachineRunner
-├── cards/                  — S-100 card classes (88-2SIO, SIO-2, MIO, 88-DCDD, 8251, 6850, 8212, TR1602)
+├── cards/                  — S-100 card classes: serial/parallel (88-2SIO, SIO-2, MIO, 3P+S) and
+│   │                         floppy/disk (88-DCDD, MDC-DIO, FIF, Helios II) controllers, plus the
+│   │                         component chips (8251, 6850, 8212, TR1602)
+│   ├── floppy/             — shared IBM-3740 disk backend (in-memory + fdcplus-web) for MDC-DIO / FIF
+│   ├── mdcdio/, fif/       — MDC-DIO firmware model / FIF descriptor engine
+│   └── helios/             — Helios II firm-sectored disk model (+ SVH image format, fdcplus backend)
 ├── bundles/                — CardBundle + seed/ registry (CPU, RAM, EPROM, serial, floppy)
 ├── interfaces/             — ICpu IBus IMemory IIODevice IInterruptController IClock IModule IS100Card IBusObserver
 └── util/bits.ts            — u8 u16 signBit zeroFlag parityFlag auxCarryAdd toWord hi lo

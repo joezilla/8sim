@@ -23,6 +23,13 @@ export interface KeyboardCardOptions {
   readonly statusPort?: number;
   /** Bits asserted on the status port while a key is waiting (default 0x01). */
   readonly readyMask?: number;
+  /**
+   * Invert the ready bit's polarity (default false). Some keyboards present
+   * data-ready active-low: the mask bits read 0 while a key waits and are set
+   * when idle. The Processor Technology Sol-20 keyboard is one — SOLOS's KSTAT
+   * driver reads the status port, `CMA`s it, then tests the ready bit.
+   */
+  readonly readyActiveLow?: boolean;
 }
 
 /**
@@ -38,13 +45,15 @@ class KeyboardDevice implements IIODevice {
   private readonly dataPort: number;
   private readonly statusPort: number;
   private readonly readyMask: number;
+  private readonly readyActiveLow: boolean;
   private queue: number[] = [];
 
-  constructor(id: string, dataPort: number, statusPort: number, readyMask: number) {
+  constructor(id: string, dataPort: number, statusPort: number, readyMask: number, readyActiveLow = false) {
     this.id = id;
     this.dataPort = u8(dataPort);
     this.statusPort = u8(statusPort);
     this.readyMask = u8(readyMask);
+    this.readyActiveLow = readyActiveLow;
     // A single-port keyboard (data === status) collapses to one claim; the data
     // read wins the dispatch below so the guest can still take keys.
     this.basePorts =
@@ -54,7 +63,8 @@ class KeyboardDevice implements IIODevice {
   ioRead(port: number): number {
     const p = u8(port);
     if (p === this.dataPort) return this.queue.shift() ?? 0; // take next key, acknowledge
-    if (p === this.statusPort) return this.queue.length > 0 ? this.readyMask : 0;
+    // Ready bit asserted while a key waits; readyActiveLow flips that polarity.
+    if (p === this.statusPort) return (this.queue.length > 0) !== this.readyActiveLow ? this.readyMask : 0;
     return 0;
   }
 
@@ -93,6 +103,7 @@ export class KeyboardCard implements IS100Card {
       opts.dataPort ?? 0x01,
       opts.statusPort ?? 0x00,
       opts.readyMask ?? 0x01,
+      opts.readyActiveLow ?? false,
     );
     const dev = this.dev;
     this.keyboard = {

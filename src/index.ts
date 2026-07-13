@@ -84,10 +84,56 @@ export { FdcPlusClient } from './cards/FdcPlusClient.js';
 export type { WebSocketLike } from './cards/FdcPlusClient.js';
 export { MitsDcddCard } from './cards/MitsDcddCard.js';
 export type { DcddOptions } from './cards/MitsDcddCard.js';
+export { ImsaiMdcDioCard } from './cards/ImsaiMdcDioCard.js';
+export type { ImsaiMdcDioOptions } from './cards/ImsaiMdcDioCard.js';
+export {
+  InMemoryMdcDioDisk,
+  MdcDioRangeError,
+  GEOMETRIES,
+  imageSize,
+  trackLength,
+} from './cards/mdcdio/MdcDioDisk.js';
+export type { MdcDioDisk, MdcDioGeometry, GeometrySpec } from './cards/mdcdio/MdcDioDisk.js';
+export { FdcPlusMdcDioDisk } from './cards/mdcdio/FdcPlusMdcDioDisk.js';
+export { MdcStatus, MdcCommand } from './cards/mdcdio/commandString.js';
+export { ImsaiFifCard, FIF_BOOT_ADDR } from './cards/ImsaiFifCard.js';
+export type { ImsaiFifOptions } from './cards/ImsaiFifCard.js';
+export { FifStatus, FifCommand } from './cards/fif/fifDescriptor.js';
+// Shared floppy disk backend (canonical home for both IMSAI controllers).
+export {
+  InMemoryFloppyDisk,
+  FloppyRangeError,
+  GEOMETRIES as FLOPPY_GEOMETRIES,
+  imageSize as floppyImageSize,
+  trackLength as floppyTrackLength,
+} from './cards/floppy/FloppyDisk.js';
+export type { FloppyDisk, FloppyGeometry } from './cards/floppy/FloppyDisk.js';
+export { FdcPlusFloppyDisk } from './cards/floppy/FdcPlusFloppyDisk.js';
 export { Tr1602Uart } from './cards/Tr1602Uart.js';
 export { Port8212 } from './cards/Port8212.js';
 export { ImsaiMioCard } from './cards/ImsaiMioCard.js';
 export type { MioCardOptions } from './cards/ImsaiMioCard.js';
+export { ProcTech3pSCard } from './cards/ProcTech3pSCard.js';
+export { ProcTech3pS, PT_NATIVE_STATUS, SIO2_STATUS } from './cards/ProcTech3pS.js';
+export type {
+  ProcTech3pSOptions,
+  ProcTech3pSInterruptOptions,
+  ChannelOrder,
+  ConfigMode,
+  StatusFlag,
+  StatusMap,
+  WordFormat,
+} from './cards/ProcTech3pS.js';
+export type { SerialSurface, ParallelSurface, KeyboardSurface } from './cards/ProcTech3pSCard.js';
+export { HeliosCard, HELIOS_BOOT_ADDR } from './cards/HeliosCard.js';
+export type { HeliosOptions } from './cards/HeliosCard.js';
+export {
+  InMemoryHeliosDisk,
+  HeliosRangeError,
+  HELIOS_GEOMETRY,
+} from './cards/helios/HeliosDisk.js';
+export type { HeliosDisk, HeliosGeometry } from './cards/helios/HeliosDisk.js';
+export { FdcPlusHeliosDisk } from './cards/helios/FdcPlusHeliosDisk.js';
 export { Mc6850Acia } from './cards/Mc6850Acia.js';
 export { Mits2SioCard } from './cards/Mits2SioCard.js';
 export type { Sio2CardOptions } from './cards/Mits2SioCard.js';

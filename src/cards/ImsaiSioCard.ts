@@ -13,8 +13,9 @@ export interface SioCardOptions {
 class SioBoardCtrl implements IIODevice {
   readonly id: string;
   readonly basePorts: ReadonlyArray<number>;
+  private latch = 0;
 
-  constructor(id: string, port: number, private readonly a: Usart8251, private readonly b: Usart8251) {
+  constructor(id: string, port: number, private readonly _a: Usart8251, private readonly _b: Usart8251) {
     this.id = id;
     this.basePorts = [port];
   }
@@ -23,12 +24,17 @@ class SioBoardCtrl implements IIODevice {
     return 0xff;
   }
 
+  // The IMSAI SIO-2 board control register is a simple latch; it does NOT reset
+  // the on-board USARTs (matching z80pack's imsai_sio1_ctl_out). IMDOS writes a
+  // control word (0x22) here after enabling the transmitter, so resetting the
+  // channel would clear TxRDY and hang the console.
   ioWrite(_port: number, value: number): void {
-    if ((value & 0x03) !== 0) this.a.reset();
-    if ((value & 0x0c) !== 0) this.b.reset();
+    this.latch = value & 0xff;
   }
 
-  reset(): void {}
+  reset(): void {
+    this.latch = 0;
+  }
 }
 
 export class ImsaiSioCard implements IS100Card {

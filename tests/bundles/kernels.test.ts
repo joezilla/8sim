@@ -69,7 +69,9 @@ describe('card behavior kernels (Story 5.7)', () => {
   it('registers the VDM kernel: a memory-mapped char display bound to a monitor', () => {
     expect(kernelById('vdm-video')).toBe(vdmKernel);
     expect(vdmKernel.binding).toBe('display');
-    expect(vdmKernel.claims({}).ports).toEqual([]); // no I/O — it's memory-mapped
+    // The screen is memory-mapped; the one I/O port is DSTAT (scroll), default 0xFE.
+    expect(vdmKernel.claims({}).ports).toEqual([0xfe]);
+    expect(vdmKernel.claims({ dstatPort: 0xc8 }).ports).toEqual([0xc8]);
     // Declares its 1K video RAM as a region (overlap-validated + on the ribbon).
     expect(vdmKernel.memory!({ base: 0xcc00 })).toEqual([{ id: 'vram', base: 0xcc00, size: 0x400, kind: 'ram' }]);
   });

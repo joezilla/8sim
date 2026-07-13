@@ -56,6 +56,16 @@ describe('KeyboardCard', () => {
     expect(bus.in(STATUS)).toBe(0x80);
   });
 
+  it('readyActiveLow inverts the ready bit (Sol-20 keyboard convention)', () => {
+    const card = make({ readyActiveLow: true });
+    const bus = busOf(card);
+    expect(bus.in(STATUS)).toBe(0x01); // idle asserts the mask (active-low)
+    card.keyboard.press(0x41); // 'A'
+    expect(bus.in(STATUS)).toBe(0); // a waiting key clears it
+    expect(bus.in(DATA)).toBe(0x41);
+    expect(bus.in(STATUS)).toBe(0x01); // back to idle
+  });
+
   it('is input-only: CPU writes are ignored and reset drains the queue', () => {
     const card = make();
     const bus = busOf(card);

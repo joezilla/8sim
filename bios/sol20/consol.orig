@@ -1,0 +1,1264 @@
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     1
+
+
+
+C000                  0001 *
+C000                  0002 *
+C000                  0003 *
+C000                  0004 *                     *****              *
+C000                  0005 *                    *                   *
+C000                  0006 *                    * * *       **      *
+C000                  0007 *                         *     *  *     *
+C000                  0008 *                    *****       **      ******
+C000                  0009 *
+C000                  0010 *                         SYSTEM SOLFTWARE
+C000                  0011 *
+C000                  0012 *
+C000                  0013 *                     <<>>     CONSOL     <<>>
+C000                  0014 *
+C000                  0015 *
+C000                  0016 *      VERSION: 1.0:5
+C000                  0017 *      RELEASE: 10.11.76
+C000                  0018 *
+C000                  0019 *
+C000                  0020 *
+C000                  0021 *      THIS PROGRAM IS THE MINIMUM SoL OPERATING SYSTEM.
+C000                  0022 *  IT PROVIDES ALL NECESSARY DISPLAY ROUTINES ALONG WITH
+C000                  0023 *  STANDARDIZED CALLING POINTS FOR INPUT/OUTPUT OPERATIONS.
+C000                  0024 *
+C000                  0025 *      COMMANDS ARE ALSO AVAILABLE TO ENTER DATA TO MEMORY
+C000                  0026 *  AND TO DISPLAY MEMORY DATA ON THE SCREEN.  AN EXECUTE
+C000                  0027 *  COMMAND IS PROVIDED TO ALLOW PROGRAM EXCUTION OUTSIDE
+C000                  0028 *  OF THE CONSOL PROM AND PROVISION IS MADE FOR CASSETTE
+C000                  0029 *  TAPE LOAD OF PROGRAMS OR DATA.
+C000                  0030 *
+C000                  0031 *
+C000                  0032 *  NOTE: CONSOL,SOLOS AND SOLED ARE REGISTERED TRADEMARKS
+C000                  0033 *        OF:
+C000                  0034 *              PROCESSOR TECHNOLOGY CORP.
+C000                  0035 *                  EMERYVILLE,CALIF
+C000                  0036 *
+C000                  0037 *    THE FOLLOWING CODE IS THE PROPERTY OF PROCESSOR
+C000                  0038 *  TECHNOLOGY CORP.  IT IS DISTRIBUTED ON A 'PERSONAL USE
+C000                  0039 *  BASIS FOR THE BENIFIT OF SoL SYSTEM OWNERS.  ALL FORMS
+C000                  0040 *  OF THE CODE ARE COPYRIGHT 1976 BY PROCESSOR TECHNOLOGY
+C000                  0041 *  AND ALL RIGHTS THERIN ARE RESERVED.
+C000                  0042 *
+C000                  0043 *
+C000                  0044 *
+C000                  0045 *   AUTO-STARTUP CODE
+C000                  0046 *
+C000 00               0047          DB       0          FOUR PHASE WONDER
+C001 C3 65 C2         0048 BGIN     JMP      STRTA
+C004                  0049 *
+C004                  0050 *
+C004                  0051 *
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     2
+
+C004                  0052 *              ----=  SoL SYSTEM I/O ROUTINES =-----
+C004                  0053 *
+C004                  0054 *   THE FOLLOWING CODE IS STANDARDIZED FOR ALL SoL SYSTEM
+C004                  0055 *   SOLFTWARE IT PROVIDES COMMON ENTRY POINTS FOR INPUT AND
+C004                  0056 *   OUTPUT OPERATIONS.  CONSOL DOES NOT HAVE PROVISION FOR
+C004                  0057 *   PARALLEL I/O OPERATIONS BECAUSE OF SPACE LIMITATIONS.
+C004                  0058 *
+C004                  0059 *
+C004                  0060 *
+C004                  0061 *
+C004                  0062 *            JUMP TABLE INPUT/OUTPUT ROUTINES
+C004                  0063 *
+C004                  0064 *   THIS ROUTINE OUTPUTS THE CHARACTER IN REGISTER 'B' TO
+C004                  0065 * THE OUTPUT DEVICE POINTED TO BY THE CURRENT OUTPUT SELECT
+C004                  0066 * REGISTER.  THE DEVICES ARE DEFINED AS FOLLOWS:
+C004                  0067 *
+C004                  0068 *       0 - VDM SCREEN
+C004                  0069 *       1 - SERIAL OUTPUT PORT
+C004                  0070 *       2 - PARALLEL OUTPUT PORT (NOT AVAILABLE ON CONSOL)
+C004                  0071 *       3 - ERROR HANDLER
+C004                  0072 *
+C004                  0073 *   ENTRY AT:  SOUT SELECTS CURRENT OUTPUT DEVICE
+C004                  0074 *              AOUT SELECTS DEVICE IN REGISTER 'A'
+C004                  0075 *
+C004 3A 03 C8         0076 SOUT     LDA      OPORT      GET PORT NUMBER FROM MEMORY LOCATION
+C007 E6 03            0077 AOUT     ANI      3          KEEP IT IN CONTROL
+C009 E5               0078          PUSH     H          WE'LL RESTORE IT LATER
+C00A 21 84 C1         0079          LXI      H,OTAB     POINT TO TABLE
+C00D 07               0080          RLC      .          COMPUTE ADDRESS
+C00E 85               0081          ADD      L
+C00F 6F               0082          MOV      L,A        WE HAVE IT
+C010 C3 71 C0         0083          JMP      DISPT      GO TO HL....
+C013                  0084 *
+C013                  0085 *
+C013                  0086 *
+C013                  0087 *   THIS ROUTINE INPUTS A CHARACTER TO REGISTER 'A' FROM
+C013                  0088 * THE CURRENT INPUT DEVICE POINTED TO BY THE CURRENT INPUT
+C013                  0089 * SELECT REGISTER.
+C013                  0090 *
+C013                  0091 *   ENTRY POINTS ARE DEFINED:
+C013                  0092 *
+C013                  0093 *         0 - KEYBOARD INPUT
+C013                  0094 *         1 - SERIAL INPUT
+C013                  0095 *         2 - PARALLEL INPUT (NOT AVAILABLE ON CONSOL)
+C013                  0096 *         3 - ERROR HANDLER
+C013                  0097 *
+C013 3A 04 C8         0098 SINP     LDA      IPORT      GET PORT NUMBER FROM MEMORY LOCATION
+C016 E6 03            0099 AINP     ANI      3          WE MUST BE REASONABLE
+C018 E5               0100          PUSH     H          SAVE H&L
+C019 21 8C C1         0101          LXI      H,ITAB     POINT TO TABLE
+C01C 07               0102          RLC      .          THE MATH
+C01D 85               0103          ADD      L
+C01E 6F               0104          MOV      L,A        DONE
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     3
+
+C01F C3 71 C0         0105          JMP      DISPT      WE HAVE THE ADDRESS ... GO TO HEAVEN
+C022                  0106 *
+C022                  0107 *
+C022                  0108 *       KEYBOARD INPUT STATUS CHECK
+C022                  0109 *
+C022                  0110 *  THIS ROUTINE TESTS THE KEYBOARD STATUS AND RETURNS
+C022                  0111 *  WITH THE TEST BITS SET.
+C022                  0112 *
+C022 DB FA            0113 KSTAT    IN       STAPT      GET STATUS WORD
+C024 E6 01            0114          ANI      KDR        TEST KEYBOARD BIT
+C026 C9               0115          RET      .          FLAGS ARE SET
+C027                  0116 *
+C027                  0117 *
+C027                  0118 *        KEYBOARD DATA INPUT
+C027                  0119 *
+C027                  0120 *  THIS ROUTINE, ENTRY AT KREAD, GETS THE DATA FROM THE
+C027                  0121 *  KEYBOARD.  ON RETURN THE CHARACTER IS IN REGISTER 'A'.
+C027                  0122 *
+C027 E1               0123 KREA1    POP      H          JUMP TABLE ENTRY POINT
+C028 CD 22 C0         0124 KREAD    CALL     KSTAT      CHECK STATUS
+C02B C2 28 C0         0125          JNZ      KREAD      WAIT FOR INPUT
+C02E DB FC            0126          IN       KDATA      GET DATA
+C030 C9               0127          RET      .          GO BACK WITH IT
+C031                  0128 *
+C031                  0129 *
+C031                  0130 *   SERIAL INPUT STATUS CHECK
+C031                  0131 *
+C031 DB F8            0132 SSTAT    IN       SERST      GET SERIAL STATUS WORD
+C033 E6 40            0133          ANI      SDR        TEST FOR SERIAL DATA READY
+C035 C9               0134          RET      .          FLAGS ARE SET
+C036                  0135 *
+C036                  0136 *
+C036                  0137 *    SERIAL DATA INPUT
+C036                  0138 *
+C036 E1               0139 SREA1    POP      H          RESTORE HL FROM JUMP TABLE ENTRY
+C037 CD 31 C0         0140 SREAD    CALL     SSTAT      NORMAL ENTRY POINT
+C03A CA 37 C0         0141          JZ       SREAD      WAIT FOR INPUT
+C03D DB F9            0142          IN       SDATA      GET DATA BYTE
+C03F C9               0143          RET      .          WE HAVE IT
+C040                  0144 *
+C040                  0145 *
+C040                  0146 *    SERIAL DATA OUTPUT
+C040                  0147 *
+C040 E1               0148 SEROT    POP      H          JUMP TABLE ENTRY POINT
+C041 DB F8            0149 SDROT    IN       SERST      GET PORT STATUS
+C043 17               0150          RAL      .          PUT HIGH BIT IN CARRY
+C044 D2 41 C0         0151          JNC      SDROT      LOOP UNTIL TRANSMITTER BUFFER IS EMPTY
+C047 78               0152          MOV      A,B        GET THE CHARACTER BACK
+C048 D3 F9            0153          OUT      SDATA      SEND IT OUT
+C04A C9               0154          RET      .          AND WE'RE DONE
+C048                  0155 *
+C04B                  0156 *
+C048                  0157 *
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     4
+
+C048                  0158 *
+C04B                  0159 *
+C04B                  0160 *                VIDEO DISPLAY DRIVER ROUTINES
+C04B                  0161 *
+C048                  0162 *
+C04B                  0163 *  THESE ROUTINES ALLOW FOR STANDARD VIDEO TERMINAL
+C04B                  0164 *  OPERATIONS.  ON ENTRY, THE CHARACTER FOR OUTPUT IS IN
+C04B                  0165 *  REGISTER B AND ALL REGISTERS ARE UNALTERED ON RETURN.
+C04B                  0166 *
+C04B                  0167 *     THE 'CONSOL' VERSION OF THIS ROUTINE IS A MINIMUM
+C04B                  0168 *  IMPLEMENTATION OF ROUTINES ORIGINATED BY:
+C04B                  0169 *
+C04B                  0170 *               IAN KETTLEBOROUGH
+C04B                  0171 *                      OF
+C04B                  0172 *             COLLEGE STATION, TEXAS
+C04B                  0173 *
+C04B                  0174 *   SOLOS AND SOLED CONTAIN THE ESC SEQUENCES AND OTHER
+C04B                  0175 *  FULL IMPLEMENTATION FEATURES.
+C04B                  0176 *
+C04B E5               0177 VDMOT    PUSH     H          SAVE EVERYBODY
+C04C D5               0178 VDMO1    PUSH     D          ENTRY FROM DEVICE SELECT
+C04D C5               0179          PUSH     B
+C04E F5               0180          PUSH     PSW
+C04F 78               0181          MOV      A,B        SAVE IN B...STRIP PARITY BEFORE SCREEN!
+C050 21 65 C1         0182          LXI      H,TBL
+C053 CD 62 C0         0183          CALL     TSRCH      GO PROCESS
+C056                  0184 *
+C056 CD 21 C1         0185 GOBACK   CALL     VDADD      GET SCREEN ADDRESS
+C059 7E               0186          MOV      A,M
+C05A F6 80            0187          ORI      80H
+C05C 77               0188          MOV      M,A        CURSOR IS BACK ON
+C05D F1               0189 GOBK     POP      PSW
+C05E C1               0190          POP      B
+C05F D1               0191          POP      D          RESTORE ALL REGISTERS
+C060 E1               0192          POP      H
+C061 C9               0193          RET      .          EXIT FROM VDMOT
+C062                  0194 *
+C062                  0195 *
+C062 7E               0196 TSRCH    MOV      A,M        GET CHR FROM TABLE
+C063 B7               0197          ORA      A
+C064 CA 7B C0         0198          JZ       CHAR       ZERO IS THE LAST
+C067 B8               0199          CMP      B          TEST THE CHR
+C068 23               0200          INX      H          POINT FORWARD
+C069 C2 76 C0         0201          JNZ      NEXT
+C06C E5               0202          PUSH     H          FOUND ONE ... SAVE ADDRESS
+C06D CD 3D C1         0203          CALL     CREM       REMOVE CURSOR
+C070 E1               0204          POP      H
+C071                  0205 *
+C071                  0206 *
+C071                  0207 *    THIS ROUTINE DISPATCHES TO THE ADDRESS POINTED TO
+C071                  0208 *  BY THE HL REGISTER PAIR.  THE RETURN ADDRESS IS THE
+C071                  0209 *  LAST ENTRY ON THE STACK.
+C071                  0210 *
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     5
+
+C071 7E               0211 DISPT    MOV      A,M        GET LOW BYTE
+C072 23               0212          INX      H
+C073 66               0213          MOV      H,M        AND THE HIGH
+C074 6F               0214          MOV      L,A        WE HAVE PLACED THEM BOTH
+C075 E9               0215          PCHL     .          GO TO IT
+C076                  0216 *
+C076                  0217 *
+C076 23               0218 NEXT     INX      H          GO TO NEXT
+C077 23               0219          INX      H
+C078 C3 62 C0         0220          JMP      TSRCH
+C07B                  0221 *
+C07B                  0222 *
+C07B 78               0223 CHAR     MOV      A,B        GET CHARACTER
+C07C B7               0224          ORA      A
+C07D C8               0225          RZ       .          RETURN IF A NULL
+C07E FE 7F            0226          CPI      7FH        IS IT A DEL?
+C080 C8               0227          RZ       .          GO BACK IF SO
+C081                  0228 *
+C081                  0229 *
+C081                  0230 *
+C081 CD 21 C1         0231 OCHAR    CALL     VDADD      GET SCREEN ADDRESS
+C084 78               0232          MOV      A,B        GET CHARACTER FOR OUTPUT
+C085 E6 7F            0233          ANI      7FH        NO HIGH BITS GO PAST HERE
+C087 77               0234          MOV      M,A        PUT CHR ON SCREEN
+C088 3A 00 C8         0235          LDA      NCHAR      GET CHARACTER POSITION
+C08B FE 3F            0236          CPI      63         END OF LINE?
+C08D DA AD C0         0237          JC       OK
+C090 3A 01 C8         0238          LDA      LINE
+C093 FE 0F            0239          CPI      15         END OF SCREEN?
+C095 C2 AD C0         0240          JNZ      OK
+C098                  0241 *
+C098                  0242 *   END OF SCREEN...ROLL UP ONE LINE
+C098                  0243 *
+C098 AF               0244 SCROLL   XRA      A
+C099 32 00 C8         0245          STA      NCHAR      BACK TO FIRST CHAR POSITION
+C09C 4F               0246 SROL     MOV      C,A
+C09D CD 28 C1         0247          CALL     VDAD       CALCULATE LINE TO BE BLANKED
+C0A0 AF               0248          XRA      A
+C0A1 CD E9 C0         0249          CALL     CLIN1      CLEAR IT
+C0A4 3A 02 C8         0250          LDA      BOT
+C0A7 3C               0251          INR      A
+C0A8 E6 0F            0252          ANI      0FH
+C0AA C3 DD C0         0253          JMP      ERAS3
+C0AD                  0254 *
+C0AD                  0255 *   INCREMENT LINE COUNTER IF NECESSARY
+C0AD                  0256 *
+C0AD 3A 00 C8         0257 OK       LDA      NCHAR      GET CHR POSITION
+C0B0 3C               0258          INR      A
+C0B1 32 00 C8         0259          STA      NCHAR      STORE THE NEW
+C0B4 FE 40            0260          CPI      64
+C0B6 D8               0261          RC
+C0B7 AF               0262          XRA      A          WE'RE PAST THE END... REWIND THE COUNT
+C0B8 32 00 C8         0263          STA      NCHAR
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     6
+
+C0BB 3A 01 C8         0264          LDA      LINE       GET THE LINE COUNT
+C0BE 3C               0265          INR      A
+C0BF E6 0F            0266          ANI      0FH        MOD 15 INCREMENT
+C0C1 32 01 C8         0267 CUR      STA      LINE       STORE THE NEW
+C0C4 C9               0268          RET
+C0C5                  0269 *
+C0C5                  0270 *    ERASE SCREEN
+C0C5                  0271 *
+C0C5 21 00 CC         0272 PERSE    LXI      H,VDMEM    POINT TO SCREEN
+C0C8 36 A0            0273          MVI      M,80H+' '  THIS IS THE CURSOR
+C0CA                  0274 *
+C0CA 23               0275 ERAS1    INX      H          BUMP THE COUNT
+C0CB 7C               0276          MOV      A,H        GET HIGH ORDER
+C0CC FE D0            0277          CPI      0D0H       THE TOP
+C0CE D2 D6 C0         0278          JNC      ERAS2
+C0D1 36 20            0279          MVI      M,' '      PUT IN A BLANK
+C0D3 C3 CA C0         0280          JMP      ERAS1
+C0D6                  0281 *
+C0D6 AF               0282 ERAS2    XRA      A
+C0D7 32 01 C8         0283          STA      LINE       ZERO LINE
+C0DA 32 00 C8         0284          STA      NCHAR      LEFT SIDE OF SCREEN
+C0DD                  0285 *
+C0DD D3 FE            0286 ERAS3    OUT      DSTAT      RESET SCROLL PARAMETERS
+C0DF 32 02 C8         0287          STA      BOT        BEGINNING OF TEXT OFFSET
+C0E2 C9               0288          RET
+C0E3                  0289 *
+C0E3                  0290 *
+C0E3 CD 21 C1         0291 CLINE    CALL     VDADD      GET CURRENT SCREEN ADDRESS
+C0E6 3A 00 C8         0292          LDA      NCHAR      CURRENT CURSOR POSITION
+C0E9 FE 40            0293 CLIN1    CPI      64         NO MORE THAN 63
+C0EB D0               0294          RNC      .          ALL DONE
+C0EC 36 20            0295          MVI      M,' '      ALL SPACED OUT
+C0EE 23               0296          INX      H
+C0EF 3C               0297          INR      A
+C0F0 C3 E9 C0         0298          JMP      CLIN1      LOOP TO END OF LINE
+C0F3                  0299 *
+C0F3                  0300 *    HOME CURSOR
+C0F3                  0301 *
+C0F3 AF               0302 PHOME    XRA      A
+C0F4 32 00 C8         0303          STA      NCHAR
+C0F7 C3 C1 C0         0304          JMP      CUR
+C0FA                  0305 *
+C0FA                  0306 * MOVE CURSOR DOWN ONE LINE
+C0FA                  0307 *
+C0FA 3A 01 C8         0308 PDOWN    LDA      LINE
+C0FD FE 0F            0309          CPI      15
+C0FF C8               0310          RZ       .          HOW FAR IS DOWN?
+C100 3C               0311          INR      A
+C101 C3 C1 C0         0312          JMP      CUR
+C104                  0313 *
+C104                  0314 * ROUTINE TO MOVE THE CURSOR UP ONE LINE
+C104                  0315 *
+C104 3A 01 C8         0316 PUP      LDA      LINE       GET LINE COUNT
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     7
+
+C107 B7               0317          ORA      A
+C108 C8               0318          RZ       .          DON'T GO MORE UP THAN UP
+C109 3D               0319          DCR      A
+C10A C3 C1 C0         0320          JMP      CUR
+C10D                  0321 *
+C10D                  0322 *  MOVE CURSOR LEFT ONE POSITION
+C10D                  0323 *
+C10D 3A 00 C8         0324 PLEFT    LDA      NCHAR
+C110 B7               0325          ORA      A
+C111 C8               0326          RZ       .          DON'T GO MORE BACK THAN BACK
+C112 3D               0327          DCR      A
+C113 32 00 C8         0328 PCUR     STA      NCHAR
+C116 C9               0329          RET
+C117                  0330 *
+C117                  0331 *     CURSOR  RIGHT ONE POSITION
+C117                  0332 *
+C117 3A 00 C8         0333 PRIT     LDA      NCHAR
+C11A FE 3F            0334          CPI      63
+C11C C8               0335          RZ       .          HOW RIGHT CAN WE BE?
+C11D 3C               0336          INR      A
+C11E C3 13 C1         0337          JMP      PCUR
+C121                  0338 *
+C121                  0339 *   ROUTINE TO CALCULATE SCREEN ADDRESS
+C121                  0340 *
+C121                  0341 *   ENTRY AT:    RETURNS:
+C121                  0342 *
+C121                  0343 *         VDADD  CURRENT SCREEN ADDRESS
+C121                  0344 *         VDAD2  ADDRESS OF CURRENT LINE, CHAR 'C'
+C121                  0345 *         VDAD   LINE 'A', CHARACTER POSITION 'C'
+C121                  0346 *
+C121 3A 00 C8         0347 VDADD    LDA      NCHAR      GET CHARACTER POSITION
+C124 4F               0348          MOV      C,A        IC' KEEPS IT
+C125 3A 01 C8         0349 VDAD2    LDA      LINE       LINE POSITION
+C128 6F               0350 VDAD     MOV      L,A        INTO 'L'
+C129 3A 02 C8         0351          LDA      BOT        GET TEXT OFFSET
+C12C 85               0352          ADD      L          ADD IT TO THE LINE POSITION
+C12D 0F               0353          RRC      .          TIMES TWO
+C12E 0F               0354          RRC      .          MAKES FOUR
+C12F 6F               0355          MOV      L,A        L HAS IT
+C130 E6 03            0356          ANI      3          MOD THREE FOR LATER
+C132 57               0357          MOV      D,A
+C133 3E CC            0358          MVI      A,<VDMEM   LOW SCREEN OFFSET
+C135 82               0359          ADD      D
+C136 67               0360          MOV      H,A        NOW H IS DONE
+C137 7D               0361          MOV      A,L        TWIST L'S ARM
+C138 E6 C0            0362          ANI      0C0H
+C13A 81               0363          ADD      C
+C13B 6F               0364          MOV      L,A
+C13C C9               0365          RET                 H & L ARE NOW PERVERTED
+C13D                  0366 *
+C13D                  0367 *    ROUTINE TO REMOVE CURSOR
+C13D                  0368 *
+C13D CD 21 C1         0369 CREM     CALL     VDADD      GET CURRENT SCREEN ADDRESS
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     8
+
+C140 7E               0370          MOV      A,M
+C141 E6 7F            0371          ANI      7FH        STRIP OFF THE CURSOR
+C143 77               0372          MOV      M,A
+C144 C9               0373          RET
+C145                  0374 *
+C145                  0375 *     ROUTINE TO BACKSPACE
+C145                  0376 *
+C145 CD 0D C1         0377 PBACK    CALL     PLEFT
+C148 CD 21 C1         0378          CALL     VDADD      GET SCREEN ADDRESS
+C14B 36 20            0379          MVI      M,' '      PUT A BLANK THERE
+C14D C9               0380          RET
+C14E                  0381 *
+C14E                  0382 *     ROUTINE TO PROCESS A CARRIAGE RETURN
+C14E                  0383 *
+C14E CD E3 C0         0384 PCR      CALL     CLINE      CLEAR FROM CURRENT CURSOR TO END OF LINE
+C151 AF               0385          XRA      A          REWIND IT
+C152 C3 13 C1         0386          JMP      PCUR       AND STORE THE NEW VALUE
+C155                  0387 *
+C155                  0388 *   ROUTINE TO PROCESS LINEFEED
+C155                  0389 *
+C155 3A 01 C8         0390 PLF      LDA      LINE       GET LINE COUNT
+C158 FE 0F            0391          CPI      15         ARE WE AT THE BOTTOM?
+C15A D2 61 C1         0392          JNC      SC
+C15D 3C               0393          INR      A
+C15E C3 C1 C0         0394          JMP      CUR        ONE MORE LINE UP
+C161                  0395 *
+C161 AF               0396 SC       XRA      A
+C162 C3 9C C0         0397          JMP      SROL
+C165                  0398 *
+C165                  0399 *
+C165                  0400 *
+C165                  0401 *     THIS TABLE DEFINES THE CHARACTERS FOR SPECIAL
+C165                  0402 * PROCESSING.  IF THE CHARACTER IS NOT IN THE TABLE IT
+C165                  0403 * GOES TO THE SCREEN.
+C165                  0404 *
+C165 8B               0405 TBL      DB       CLEAR      SCREEN
+C166 C5 C0            0406          DW       PERSE
+C168 97               0407          DB       UP         CURSOR
+C169 04 C1            0408          DW       PUP
+C16B 9A               0409          DB       DOWN
+C16C FA C0            0410          DW       PDOWN
+C16E 81               0411          DB       LEFT
+C16F 0D C1            0412          DW       PLEFT
+C171 93               0413          DB       RIGHT
+C172 17 C1            0414          DW       PRIT
+C174 8E               0415          DB       HOME
+C175 F3 C0            0416          DW       PHOME
+C177 0D               0417          DB       CR         CARRIAGE RETURN
+C178 4E C1            0418          DW       PCR
+C17A 0A               0419          DB       LF         LINE FEED
+C17B 55 C1            0420          DW       PLF
+C17D 5F               0421          DB       BACKS      BACK SPACE
+C17E 45 C1            0422          DW       PBACK
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE     9
+
+C180 80               0423          DB       MODE       MODE KEY
+C181 B4 C1            0424          DW       COMND
+C183 00               0425          DB       0          END OF TABLE
+C184                  0426 *
+C184                  0427 *   OUTPUT DEVICE TABLE
+C184                  0428 *
+C184 4C C0            0429 OTAB     DW       VDMO1      VDM DRIVER
+C186 40 C0            0430          DW       SEROT      SERIAL OUTPUT
+C188 AD C1            0431          DW       ERROT      ERROR HANDLER (FOR CONSOL)
+C18A AD C1            0432          DW       ERROT      ERROR HANDLER
+C18C                  0433 *
+C18C                  0434 *   INPUT DEVICE TABLE
+C18C                  0435 *
+C18C 27 C0            0436 ITAB     DW       KREA1      KEYBOARD INPUT
+C18E 36 C0            0437          DW       SREA1      SERIAL INPUT
+C190 AD C1            0438          DW       ERROT      ERROR HANDLER (FOR CONSOL)
+C192 AD C1            0439          DW       ERROT      ERROR HANDLER
+C194                  0440 *
+C194                  0441 *
+C194                  0442 *            COMMAND TABLE
+C194                  0443 *
+C194                  0444 *  THIS TABLE DESCRIBES THE VALID COMMANDS FOR CONSOL
+C194                  0445 *
+C194 54 45            0446 COMTAB   ASC      'TE'
+C196 70 C2            0447          DW       TERM
+C198 44 55            0448          ASC      'DU'
+C19A A1 C2            0449          DW       DUMP
+C19C 45 4E            0450          ASC      'EN'
+C19E 07 C3            0451          DW       ENTER
+C1A0 45 58            0452          ASC      'EX'
+C1A2 35 C3            0453          DW       EXEC
+C1A4 54 4C            0454          ASC      'TL'
+C1A6 39 C3            0455          DW       TLOAD
+C1A8 42 41            0456          ASC      'BA'       SPECIAL COMMAND TO EXECUTE 0
+C1AA 00 00            0457          DW       0
+C1AC 00               0458          DB       0          END OF TABLE MARK
+C1AD                  0459 *
+C1AD                  0460 *
+C1AD                  0461 *              CONSOL PORT ERROR HANDLER
+C1AD                  0462 *
+C1AD AF               0463 ERROT    XRA      A
+C1AE 32 04 C8         0464          STA      IPORT      DEFAULT TO SCREEN
+C1B1 32 03 C8         0465          STA      OPORT      DEFAULT TO SCREEN
+C1B4                  0466 *
+C1B4                  0467 *
+C1B4                  0468 *
+C1B4                  0469 *
+C1B4                  0470 *            =--  COMMAND MODE  --=
+C1B4                  0471 *
+C1B4                  0472 *
+C1B4                  0473 *   THIS ROUTINE GETS AND PROCESSES COMMANDS
+C1B4                  0474 *
+C1B4 31 00 CC         0475 COMND    LXI      SP,SYSTP   SET STACK POINTER
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    10
+
+C1B7 CD 12 C2         0476          CALL     PROMPT     PUT PROMPT ON SCREEN
+C1BA CD C3 C1         0477          CALL     GCLIN      GET COMMAND LINE
+C1BD CD E1 C1         0478          CALL     COPRC      PROCESS THE LINE
+C1C0 C3 B4 C1         0479          JMP      COMND      OVER AND OVER
+C1C3                  0480 *
+C1C3                  0481 *
+C1C3                  0482 *
+C1C3                  0483 *   THIS ROUTINE READS A COMMAND LINE FROM THE SYSTEM
+C1C3                  0484 *  KEYBOARD AND PROCESSES IT TO THE SCREEN.
+C1C3                  0485 *
+C1C3                  0486 *  C/R   TERMINATES THE SEQUENCE ERASING ALL CHARS TO THE
+C1C3                  0487 *        RIGHT OF THE CURSOR
+C1C3                  0488 *  L/F   TERMINATES THE SEQUENCE
+C1C3                  0489 *  MODE  RESTARTS THE COMMAND LINE.
+C1C3                  0490 *
+C1C3 CD 28 C0         0491 GCLIN    CALL     KREAD      READ KEYBOARD
+C1C6 FE 20            0492          CPI      20H
+C1C8 47               0493          MOV      B,A
+C1C9 DA D2 C1         0494          JC       PROCS      PROCESS CONTROL CHARACTER
+C1CC CD 4B C0         0495 CONT     CALL     VDMOT
+C1CF C3 C3 C1         0496          JMP      GCLIN
+C1D2                  0497 *
+C1D2                  0498 *   PROCESS CONTROL KEYS
+C1D2                  0499 *
+C1D2 FE 0D            0500 PROCS    CPI      CR
+C1D4 CA DD C1         0501          JZ       CRPRC      ERASE THE REMAINING LINE PRIOR TO RETURN
+C1D7 FE 0A            0502          CPI      LF
+C1D9 C8               0503          RZ       .          IF SO GO PROCESS
+C1DA C3 C3 C1         0504          JMP      GCLIN      NO CONTROL CHARS TO SCREEN
+C1DD                  0505 *
+C1DD                  0506 *
+C1DD CD E3 C0         0507 CRPRC    CALL     CLINE      CLEAR REMAINING LINE
+C1E0 C9               0508          RET      .          NOW PROCESS
+C1E1                  0509 *
+C1E1                  0510 *
+C1E1                  0511 *      FIND AND PROCESS    COMMAND
+C1E1                  0512 *
+C1E1 CD 3D C1         0513 COPRC    CALL     CREM       REMOVE THE CURSOR
+C1E4 0E 01            0514          MVI      C,1        SET FOR CHARACTER POSITION
+C1E6 CD 25 C1         0515          CALL     VDAD2      GET SCREEN ADDRESS
+C1E9 EB               0516          XCHG
+C1EA CD 32 C2         0517          CALL     SCHR       SCAN PAST BLANKS
+C1ED CA 8E C3         0518          JZ       ERR1       NO COMMAND?
+C1F0 EB               0519          XCHG     .          HL HAS FIRST CHR
+C1F1 11 94 C1         0520          LXI      D,COMTAB   POINT TO COMMAND TABLE
+C1F4                  0521 *
+C1F4                  0522 *   THIS ROUTINE SEARCHES THROUGH A TABLE, POINTED TO
+C1F4                  0523 *  BY 'DE', FOR A DOUBLE CHARACTER MATCH OF THE 'HL'
+C1F4                  0524 *  MEMORY CONTENT.  IF NO MATCH IS FOUND THE SCAN ENDS
+C1F4                  0525 *  BY PLACING A QUESTION MARK WITHIN THE SEARCH STRING.
+C1F4                  0526 *
+C1F4 1A               0527 FDCOM    LDAX     D
+C1F5 B7               0528          ORA      A          TEST FOR TABLE END
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    11
+
+C1F6 CA 8F C3         0529          JZ       ERR2       NOT FOUND..COMMAND ERROR
+C1F9 E5               0530          PUSH     H          SAVE START OF SCAN ADDRESS
+C1FA BE               0531          CMP      M          TEST FIRST CHR
+C1FB 13               0532          INX      D
+C1FC C2 0B C2         0533          JNZ      NCOM
+C1FF                  0534 *
+C1FF 23               0535          INX      H
+C200 1A               0536          LDAX     D
+C201 BE               0537          CMP      M          NOW SECOND CHARACTER
+C202 C2 0B C2         0538          JNZ      NCOM       GOODNESS
+C205                  0539 *
+C205 C1               0540          POP      B          CLEAR THE STACK
+C206 EB               0541          XCHG     .          DE HAS SCAN ADDRESS
+C207 23               0542          INX      H          HL HAS COMMAND ADDRESS
+C208 C3 71 C0         0543          JMP      DISPT      DISPATCH TO IT
+C20B                  0544 *
+C20B                  0545 *
+C20B 13               0546 NCOM     INX      D          GO TO NEXT ENTRY
+C20C 13               0547          INX      D
+C20D 13               0548          INX      D
+C20E E1               0549          POP      H          GET BACK ORIGINAL ADDRESS
+C20F C3 F4 C1         0550          JMP      FDCOM      CONTINUE SEARCH
+C212                  0551 *
+C212                  0552 *
+C212                  0553 *      OUTPUT A CRLF FOLLOWED BY A PROMPT
+C212                  0554 *  ( WITH CONSOL ALL OPERATIONS ARE ON THE SCREEN)
+C212                  0555 *
+C212 CD 1A C2         0556 PROMPT   CALL     CRLF
+C215 06 3E            0557          MVI      B,'>'      THE PROMPT
+C217 C3 4B C0         0558          JMP      VDMOT      PUT IT ON THE SCREEN
+C21A                  0559 *
+C21A 06 0A            0560 CRLF     MVI      B,LF       LINE FEED
+C21C CD 4B C0         0561          CALL     VDMOT
+C21F 06 0D            0562          MVI      B,CR       CARRIAGE RETURN
+C221 C3 4B C0         0563          JMP      VDMOT      PUT IT OUT AND RETURN
+C224                  0564 *
+C224                  0565 *
+C224                  0566 *  SCAN OVER UP TO 12 CHARACTERS LOOKING FOR A BLANK
+C224                  0567 *
+C224 0E 0C            0568 SBLK     MVI      C,12       MAXIMUM COMMAND STRING
+C226 1A               0569 SBLK1    LDAX     D
+C227 FE 20            0570          CPI      BLANK
+C229 CA 32 C2         0571          JZ       SCHR       GOT A BLANK NOW SCAN PAST IT
+C22C 13               0572          INX      D
+C22D 0D               0573          DCR      C          NO MORE THAN TWELVE
+C22E C2 26 C2         0574          JNZ      SBLK1
+C231 C9               0575          RET      .          GO BACK WITH ZERO FLAG SET
+C232                  0576 *
+C232                  0577 *
+C232                  0578 *  SCAN PAST UP TO 10 BLANK POSITIONS LOOKING FOR
+C232                  0579 * A NON BLANK CHARACTER.
+C232                  0580 *
+C232 0E 0A            0581 SCHR     MVI      C,10       SCAN TO FIRST NON BLANK CHR WITHIN 10
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    12
+
+C234 1A               0582 SCHR1    LDAX     D          GET NEXT CHARACTER
+C235 FE 20            0583          CPI      SPACE
+C237 C0               0584          RNZ      .          WE'RE PAST THEM
+C238 13               0585          INX      D          NEXT SCAN ADDRESS
+C239 0D               0586          DCR      C
+C23A C8               0587          RZ       .          COMMAND ERROR
+C23B C3 34 C2         0588          JMP      SCHR1      KEEP LOOPING
+C23E                  0589 *
+C23E                  0590 *  THIS ROUTINE SCANS OVER CHARACTERS, PAST BLANKS AND
+C23E                  0591 * CONVERTS THE FOLLOWING ADDRESS TO HEX.  ERRORS RETURN TO
+C23E                  0592 * THE ERROR HANDLER.
+C23E                  0593 *
+C23E CD 24 C2         0594 SCONV    CALL     SBLK
+C241 CA 8E C3         0595          JZ       ERR1
+C244                  0596 *
+C244                  0597 *  THIS ROUTINE CONVERTS ASCII DIGITS INTO BINARY FOLLOWING
+C244                  0598 * A STANDARD HEX CONVERSION.  THE SCAN STOPS WHEN AN ASCII
+C244                  0599 * SPACE IS ENCOUNTERED.  PARAMETER ERRORS REPLACE THE ERROR
+C244                  0600 * CHARACTER ON THE SCREEN WITH A QUESTION MARK.
+C244                  0601 *
+C244 21 00 00         0602 SHEX     LXI      H,0        CLEAR H & L
+C247 1A               0603 SHE1     LDAX     D          GET CHARACTER
+C248 FE 20            0604          CPI      20H        IS IT A SPACE?
+C24A C8               0605          RZ       .          IF SO
+C24B                  0606 *
+C24B 29               0607 HCONV    DAD      H          MAKE ROOM FOR THE NEW ONE
+C24C 29               0608          DAD      H
+C24D 29               0609          DAD      H
+C24E 29               0610          DAD      H
+C24F CD 5B C2         0611          CALL     HCOV1      DO THE CONVERSION
+C252 D2 8E C3         0612          JNC      ERR1       NOT VALID HEXIDECIMAL VALUE
+C255 85               0613          ADD      L
+C256 6F               0614          MOV      L,A        MOVE IT IN
+C257 13               0615          INX      D          BUMP THE POINTER
+C258 C3 47 C2         0616          JMP      SHE1
+C25B                  0617 *
+C25B D6 30            0618 HCOV1    SUI      48         REMOVE ASCII BIAS
+C25D FE 0A            0619          CPI      10
+C25F D8               0620          RC       .          IF LESS THAN 9
+C260 D6 07            0621          SUI      7          IT'S A LETTER??
+C262 FE 10            0622          CPI      10H
+C264 C9               0623          RET      .          WITH TEST IN HAND
+C265                  0624 *
+C265                  0625 *
+C265                  0626 *    SYSTEM START UP, CLEAR PART OF RAM AND SET STACK
+C265                  0627 * POINTER, FALLING THROUGH TO TERMINAL MODE.
+C265                  0628 *
+C265 AF               0629 STRTA    XRA      A
+C266 4F               0630          MOV      C,A        WE CLEAR THE FIRST 256 BYTES
+C267 21 00 C8         0631          LXI      H,SYSRAM   POINT TO SYSTEM RAM
+C26A                  0632 *
+C26A 77               0633 CLERA    MOV      M,A
+C26B 23               0634          INX      H
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    13
+
+C26C 0C               0635          INR      C
+C26D C2 6A C2         0636          JNZ      CLERA      CLEAR FIRST 256 BYTES
+C270                  0637 *
+C270                  0638 *
+C270                  0639 *
+C270                  0640 *                 TERM COMMAND
+C270                  0641 *
+C270                  0642 *   THIS ROUTINE GETS CHARACTERS FROM THE SYSTEM KEYBOARD
+C270                  0643 *  AND OUTPUTS THEM TO THE SERIAL OUTPUT PORT.  IT IS
+C270                  0644 *  INTENDED TO CONFIGURE THE SoL AS A STANDARD VIDEO
+C270                  0645 *  TERMINAL.  COMMAND KEYS ARE NOT OUTPUT TO THE OUTPUT
+C270                  0646 *  PORT BUT ARE INTERPRETED AS DIRECT SoL COMMANDS.
+C270                  0647 *  THE MODE COMMAND, RECEIVED BY THE KEYBOARD, PUTS THE
+C270                  0648 *  SoL IN THE COMMAND MODE.
+C270                  0649 *
+C270                  0650 *
+C270 31 00 CC         0651 TERM     LXI      SP,SYSTP   SET STACK POINTER
+C273 CD ED C3         0652          CALL     TOFF       SLOW DOWN THE TAPES
+C276 CD C5 C0         0653          CALL     PERSE      CLEAR THE SCREEN
+C279                  0654 *
+C279 CD 22 C0         0655 KIN      CALL     KSTAT      IS THERE ONE WAITINGI
+C27C C2 90 C2         0656          JNZ      TIN
+C27F DB FC            0657          IN       KDATA      GET THE CHARACTER
+C281 47               0658          MOV      B,A
+C282 E6 80            0659          ANI      80H        COMMAND KEY?
+C284 CA 8D C2         0660          JZ       TOUT
+C287 CD 4B C0         0661          CALL     VDMOT      PROCESS IT
+C28A C3 90 C2         0662          JMP      TIN
+C28D                  0663 *
+C28D CD 41 C0         0664 TOUT     CALL     SDROT      OUTPUT IT TO THE SERIAL PORT
+C290 CD 31 C0         0665 TIN      CALL     SSTAT      GET SERIAL STATUS
+C293 CA 79 C2         0666          JZ       KIN        LOOP IF NOT
+C296 DB F9            0667          IN       SDATA      GET DATA
+C298 E6 7F            0668          ANI      7FH        NO HIGH BITS FROM HERE
+C29A 47               0669          MOV      B,A        IT'S OUTPUT FROM 'B'
+C29B CD 4B C0         0670          CALL     VDMOT      PUT IT ON THE SCREEN
+C29E C3 79 C2         0671          JMP      KIN        LOOP OVER AND OVER
+C2A1                  0672 *
+C2A1                  0673 *
+C2A1                  0674 *
+C2A1                  0675 *            DUMP COMMAND
+C2A1                  0676 *
+C2A1                  0677 *     THIS ROUTINE DUMPS CHARACTERS FROM MEMORY TO THE
+C2A1                  0678 *  CURRENT OUTPUT DEVICE.  (WITH CONSOL ALL OUTPUT GOES TO
+C2A1                  0679 *  THE SCREEN).  ALL VALUES ARE DESPLAYED AS ASCII HEX.
+C2A1                  0680 *
+C2A1                  0681 *  THE COMMAND FORM IS AS FOLLOWS:
+C2A1                  0682 *
+C2A1                  0683 *        DUmp addr1 addr2
+C2A1                  0684 *
+C2A1                  0685 *    THE VALUES FROM ADDR1 TO ADDR2 ARE THEN OUTPUT TO THE
+C2A1                  0686 *  OUTPUT DEVICE.  IF ONLY ADDR1 IS SPECIFIED THEN THE
+C2A1                  0687 *  VALUE AT THAT ADDRESS IS OUTPUT.
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    14
+
+C2A1                  0688 *
+C2A1 CD 3E C2         0689 DUMP     CALL     SCONV      SCAN TO FIRST ADDRESS AND CONVERT IT
+C2A4 E5               0690          PUSH     H          SAVE THE VALUE
+C2A5 CD 32 C2         0691          CALL     SCHR       GET THE NEXT
+C2A8 E1               0692          POP      H
+C2A9 CA B4 C2         0693          JZ       POVER      NO SECOND VALUE
+C2AC E5               0694          PUSH     H
+C2AD CD 44 C2         0695          CALL     SHEX       GET SECOND
+C2B0 D1               0696          POP      D          THIS IS THE FIRST
+C2B1 C3 B6 C2         0697          JMP      NPASS      MIND BENDERS
+C2B4                  0698 *
+C2B4 54               0699 POVER    MOV      D,H        NO SECOND PARAMETER COPY FIRST TO DE
+C2B5 5D               0700          MOV      E,L
+C2B6 EB               0701 NPASS    XCHG     .          HL HAS START, DE HAS END
+C2B7                  0702 *
+C2B7 CD 1A C2         0703 DLOOP    CALL     CRLF
+C2BA DB FC            0704          IN       KDATA
+C2BC FE 80            0705          CPI      MODE        MODE KEY' WILL ESCAPE THE DUMP
+C2BE CA B4 C1         0706          JZ       COMND
+C2C1 CD DD C2         0707          CALL     ADOUT      OUTPUT ADDRESS
+C2C4 CD E5 C2         0708          CALL     BOUT       ANOTHER SPACE TO KEEP IT PRETTY
+C2C7 0E 10            0709          MVI      C,16       VALUES PER LINE
+C2C9                  0710 *
+C2C9 7E               0711 DLP1     MOV      A,M        GET THE CHR
+C2CA C5               0712          PUSH     B          SAVE VALUE COUNT
+C2CB CD E2 C2         0713          CALL     HBOUT      SEND IT OUT WITH A BLANK
+C2CE CD 02 C3         0714          CALL     ACOMP      COMPARE ADDRESSES
+C2D1 D2 B4 C1         0715          JNC      COMND      ALL DONE
+C2D4 C1               0716          POP      B          VALUES PER LINE
+C2D5 23               0717          INX      H
+C2D6 0D               0718          DCR      C          BUMP THE LINE COUNT
+C2D7 C2 C9 C2         0719          JNZ      DLP1       NOT ZERO IF MORE FOR THIS LINE
+C2DA C3 B7 C2         0720          JMP      DLOOP      DO A LFCR BEFORE THE NEXT
+C2DD                  0721 *
+C2DD                  0722 *    OUTPUT HL AS HEX 16 BIT VALUE
+C2DD                  0723 *
+C2DD 7C               0724 ADOUT    MOV      A,H        H FIRST
+C2DE CD EA C2         0725          CALL     HEOUT
+C2E1 7D               0726          MOV      A,L        THEN L FOLLOWED BY A SPACE
+C2E2                  0727 *
+C2E2 CD EA C2         0728 HBOUT    CALL     HEOUT
+C2E5 06 20            0729 BOUT     MVI      B,' '
+C2E7 C3 4B C0         0730          JMP      VDMOT      CONSOL PUTS IT ON THE SCREEN
+C2EA                  0731 *
+C2EA 4F               0732 HEOUT    MOV      C,A        GET THE CHARACTER
+C2EB 0F               0733          RRC
+C2EC 0F               0734          RRC      .          MOVE THE HIGH FOUR DOWN
+C2ED 0F               0735          RRC
+C2EE 0F               0736          RRC
+C2EF CD F3 C2         0737          CALL     HEOU1      PUT THEM OUT
+C2F2 79               0738          MOV      A,C        THIS TIME THE-LOW FOUR
+C2F3                  0739 *
+C2F3 E6 0F            0740 HEOU1    ANI      0FH        FOUR ON THE FLOOR
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    15
+
+C2F5 C6 30            0741          ADI      48         WE WORK WITH ASCII HERE
+C2F7 FE 3A            0742          CPI      58         0-9?
+C2F9 DA FE C2         0743          JC       OUTH       YUPI
+C2FC C6 07            0744          ADI      7          MAKE IT A LETTER
+C2FE 47               0745 OUTH     MOV      B,A        OUTPUT IT FROM REGISTER 'B'
+C2FF C3 4B C0         0746          JMP      VDMOT
+C302                  0747 *
+C302                  0748 *   COMPARE DE AND HL
+C302                  0749 *
+C302 7D               0750 ACOMP    MOV      A,L
+C303 93               0751          SUB      E
+C304 7C               0752          MOV      A,H
+C305 9A               0753          SBB      D
+C306 C9               0754          RET      .          FLAGS ARE SET
+C307                  0755 *
+C307                  0756 *
+C307                  0757 *           ENTER COMMAND
+C307                  0758 *
+C307                  0759 *   THIS ROUTINE GETS VALUES FROM THE KEYBOARD AND ENTERS
+C307                  0760 * THEM INTO MEMORY.  THE INPUT VALUES ARE SCANNED FOLLOWING
+C307                  0761 * A STANDARD 'GCLIN' INPUT SO ON SCREEN EDITING MAY TAKE
+C307                  0762 * PLACE PRIOR TO THE LINE TERMINATOR.  A BACK SLASH '/'
+C307                  0763 * ENDS THE ROUTINE AND-RETURNS CONTROL TO THE COMMAND MODE.
+C307                  0764 *
+C307 CD 3E C2         0765 ENTER    CALL     SCONV      SCAN OVER CHARS AND GET ADDRESS
+C30A E5               0766          PUSH     H          SAVE ADDRESS
+C30B                  0767 *
+C30B CD 1A C2         0768 ENLOP    CALL     CRLF
+C30E 06 3A            0769          MVI      B,':'
+C310 CD CC C1         0770          CALL     CONT       GET LINE OF INPUT
+C313 CD 3D C1         0771          CALL     CREM       REMOVE THE CURSOR
+C316 0E 01            0772          MVI      C,1        START SCAN
+C318 CD 25 C1         0773          CALL     VDAD2      GET ADDRESS
+C31B EB               0775          XCHG     .          ....TO DE
+C31C                  0776 *
+C31C 0E 03            0777 ENLO1    MVI      C,3        NO MORE THAN THREE SPACES BETWEEN VALUES
+C31E CD 34 C2         0000          CALL     SCHR1 SCAN TO NEXT VALUE
+C321 CA 0B C3         0778          JZ       ENLOP      LAST ENTRY FOUND START NEW LINE
+C324 1A               0779 ENLO2    LDAX     D          GET THE CHR
+C325 FE 2F            0780          CPI      '/'        COMMAND TERMINATOR?
+C327 CA B4 C1         0781          JZ       COMND      IF SO...
+C32A CD 44 C2         0782          CALL     SHEX       CONVERT VALUE
+C32D 7D               0783          MOV      A,L        GET LOW PART AS CONVERTED
+C32E E1               0784          POP      H          GET MEMORY ADDRESS
+C32F 77               0785          MOV      M,A        PUT IN THE VALUE
+C330 23               0786          INX      H
+C331 E5               0787          PUSH     H          BACK GOES THE ADDRESS
+C332 C3 1C C3         0788          JMP      ENLO1      CONTINUE THE SCAN
+C335                  0789 *
+C335                  0790 *
+C335                  0791 *
+C335                  0792 *              EXECUTE COMMAND
+C335                  0793 *
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    16
+
+C335                  0794 *   THIS ROUTINE GETS THE FOLLOWING PARAMETER AND DOES A
+C335                  0795 * PROGRAM JUMP TO THE LOCATION GIVEN BY IT.  IF PROPER
+C335                  0796 * STACK OPERATIONS ARE USED WITHIN THE EXTERNAL PROGRAM
+C335                  0797 * IT CAN DO A STANDARD 'RET'URN TO THE CONSOL COMMAND MODE.
+C335                  0798 *
+C335                  0799 *
+C335 CD 3E C2         0800 EXEC     CALL     SCONV      SCAN PAST BLANKS AND GET PARAMETER
+C338 E9               0801          PCHL                GO ........ (AMD TAKE NOTE)
+C339                  0802 *
+C339                  0803 *
+C339                  0804 *
+C339                  0805 *           TAPE LOAD COMMAND
+C339                  0806 *
+C339                  0807 *   THIS ROUTINE READS FROM EITHER TAPE UNIT PLACING
+C339                  0808 * THE READ DATA INTO MEMORY.  WHILE SPACE WITHIN CONSOL
+C339                  0809 * DOES NOT ALLOW FOR 'STANDARD' TAPE ROUTINES THIS
+C339                  0810 * COMMAND WILL LOAD SoL- BASIC5 AND OTHER STANDARD SoL
+C339                  0811 * SYSTEM SOLFTWARE FOR DIRECT EXECUTION.
+C339                  0812 *
+C339                  0813 *
+C339 CD 24 C2         0814 TLOAD    CALL     SBLK       SCAN TO SPEED PARAMETER
+C33C CA 4A C3         0815          JZ       DFLT       DEFAULT TO HIGH SPEED IF NONE
+C33F CD 44 C2         0816          CALL     SHEX       CONVERT IT
+C342 7D               0817          MOV      A,L        GET VALUE
+C343 E6 01            0818          ANI      1          ONLY BIT ZERO COUNTS
+C345 3E 20            0819          MVI      A,32       PRETEND ITS SLOW
+C347 C2 4B C3         0820          JNZ      SETSP
+C34A                  0821 *
+C34A AF               0822 DFLT     XRA      A          MAKE IT FAST
+C34B F6 C0            0823 SETSP    ORI      TAPE1+TAPE2  CONSOL STARTS BOTH TAPES
+C34D D3 FA            0824          OUT      STAPT      START TAPES AND SELECT SPEED
+C34F CD F1 C3         0825          CALL     DELAY      WAIT WHILE THE TAPE UNIT WINDS UP
+C352 DB FB            0826          IN       TDATA      CLEAR THE UART FLAGS
+C354                  0827 *
+C354 CD 94 C3         0828 TLOD1    CALL     RHEAD      READ PAST HEADER
+C357 C2 54 C3         0829          JNZ      TLOD1      IF ERROR START OVER
+C35A                  0830 *
+C35A 2A 0C C8         0831          LHLD     BLOCK      GET BLOCK SIZE
+C35D EB               0832          XCHG     .          ...TO DE
+C35E 2A 0E C8         0833          LHLD     LOADR      GET LOAD ADDRESS
+C361                  0834 *
+C361 7A               0835 LOLOOP   MOV      A,D        GET COUNT
+C362 B3               0836          ORA      E
+C363 CA ED C3         0837          JZ       TOFF       COUNT IS ZERO-TURN OFF TAPE AND RETURN
+C366 01 00 FF         0838          LXI      B,-256     THIS MANY PRIOR TO CRC TEST
+C369 EB               0839          XCHG     .          COUNT TO HL
+C36A 09               0840          DAD      B          A LITTLE MATH
+C36B D2 E1 C3         0841          JNC      LBLK       NO CARRY, IT'S THE LAST BLOCK
+C36E 06 00            0842          MVI      B,0        256 TO READ
+C370                  0843 *
+C370 0E 00            0844 RDBLK    MVI      C,0        ZERO THE CRC
+C372 EB               0845          XCHG     .          ROUND ROBIN
+C373                  0000 *
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    17
+
+C373 CD C6 C3         0846 RTBYT    CALL     TAPIN      GET CHARACTER
+C376 77               0847          MOV      M,A        STORE IT
+C377 23               0848          INX      H          BUMP MEMORY LOCATION
+C378 A9               0849          XRA      C          UPDATE THE CRC
+C379 2F               0850          CMA
+C37A 91               0851          SUB      C
+C37B 4F               0852          MOV      C,A        STORE THE NEW
+C37C 05               0853          DCR      B          COUNT DOWN
+C37D C2 73 C3         0854          JNZ      RTBYT      STILL MORE IF NOT ZERO
+C380                  0855 *
+C380 CD C1 C3         0856          CALL     CRCCK      CHECK CRC AND FALL THROUGH TO ERROR IF NO GOOD
+C383 CA 61 C3         0857          JZ       LOLOOP     TEST OK
+C386                  0858 *
+C386 06 07            0859 TERR     MVI      B,'G'-40H  BELL CHARACTER
+C388 CD 4B C0         0860          CALL     VDMOT      PUT IT ON THE SCREEN
+C38B C3 B4 C1         0861          JMP      COMND
+C38E                  0862 *
+C38E                  0863 *
+C38E                  0864 *    CONSOL ERROR HANDLER
+C38E                  0865 *
+C38E EB               0866 ERR1     XCHG     .          GET SCAN ADDRESS
+C38F 36 3F            0867 ERR2     MVI      M,'?'      PUT A QUESTION MARK THERE
+C391 C3 B4 C1         0868          JMP      COMND      AND GO TO COMMAND MODE
+C394                  0869 *
+C394                  0870 *   READ  THE HEADER
+C394                  0871 *
+C394 06 0A            0872 RHEAD    MVI      B,10       FIND 10 NULLS
+C396 DB FA            0873 RHEA1    IN       STAPT      GET A BYTE
+C398 E6 40            0874          ANI      TDR
+C39A CA 96 C3         0875          JZ       RHEA1
+C39D DB FB            0876          IN       TDATA      IGNORE ERROR CONDITIONS
+C39F B7               0877          ORA      A          ZERO?
+C3A0 C2 94 C3         0878          JNZ      RHEAD
+C3A3 05               0879          DCR      B
+C3A4 C2 96 C3         0880          JNZ      RHEA1      LOOP UNTIL 10 IN A ROW
+C3A7                  0881 *
+C3A7                  0882 *    WAIT FOR THE START CHARACTER
+C3A7                  0883 *
+C3A7 CD C6 C3         0884 SOHL     CALL     TAPIN
+C3AA 3D               0885          DCR      A
+C3AB C2 A7 C3         0886          JNZ      SOHL       WAIT FOR A '1'
+C3AE                  0887 *
+C3AE                  0888 *    NOW  GET THE HEADER
+C3AE                  0889 *
+C3AE 21 05 C8         0890          LXI      H,THEAD    POINT TO BUFFER
+C3B1 01 00 10         0891          LXI      B,HLEN*256  LENGTH OF HEADER IN 'B',C<O
+C3B4                  0892 *
+C3B4 CD C6 C3         0893 RHED1    CALL     TAPIN      GET BYTE
+C3B7 77               0894          MOV      M,A        STORE IT
+C3B8 23               0895          INX      H          INCREMENT ADDRESS
+C3B9 A9               0896          XRA      C          NOW CALCULATE THE CRC
+C3BA 2F               0897          CMA      .          INSIDE OUT AND UPSIDE DOWN
+C3BB 91               0898          SUB      C          SQUEEZE IT
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    18
+
+C3BC 4F               0899          MOV      C,A        AND SAVE AGAIN
+C3BD 05               0900          DCR      B          WHOLE HEADER YET?
+C3BE C2 B4 C3         0901          JNZ      RHED1      LOOP UNTIL DONE
+C3C1                  0902 *
+C3C1                  0903 *   THIS  ROUTINE GETS THE NEXT BYTE AND COMPARES IT
+C3C1                  0904 * TO THE  VALUE IN REGISTER C. THE FLAGS ARE SET ON
+C3C1                  0905 * RETURN.
+C3C1                  0906 *
+C3C1 CD C6 C3         0907 CRCCK    CALL     TAPIN      GET CRC BYTE
+C3C4 B9               0908          CMP      C          COMPARE IT WITH CALCULATED
+C3C5 C9               0909          RET
+C3C6                  0910 *
+C3C6                  0911 *
+C3C6                  0912 *    THIS ROUTINE GETS THE NEXT AVAILABLE BYTE FROM THE
+C3C6                  0913 *  TAPE.  WHILE WAITING FOR THE BYTE THE KEYBOARD IS TESTED
+C3C6                  0914 *  FOR A 'MODE' COMMAND.  IF RECEIVED THE TAPE LOAD IS
+C3C6                  0915 *  TERMINATED AND A RETURN TO THE COMMAND MODE IS MADE.
+C3C6                  0916 *
+C3C6 DB FA            0917 TAPIN    IN       STAPT      CHECK STATUS
+C3C8 E6 40            0918          ANI      TDR
+C3CA C2 D7 C3         0919          JNZ      TREDY      ONE IS AVAILABLE
+C3CD DB FC            0920          IN       KDATA      CHECK FOR MODE WHILE WE'RE WAITING
+C3CF FE 80            0921          CPI      MODE
+C3D1 CA B4 C1         0922          JZ       COMND      MODE WAS GIVEN..ABORT OPERATION
+C3D4 C3 C6 C3         0923          JMP      TAPIN      NOT MODE...STAY IN LOOP
+C3D7                  0924 *
+C3D7 DB FA            0925 TREDY    IN       STAPT
+C3D9 E6 18            0926          ANI      TFE+TOE    DATA ERROR?
+C3DB C2 86 C3         0927          JNZ      TERR       IF FRAMING OR OVERRUN ERROR
+C3DE DB FB            0928          IN       TDATA      GET THE DATA
+C3E0 C9               0929          RET
+C3E1                  0930 *
+C3E1                  0931 * THIS ROUTINE CALCULATES THE LENGTH OF THE LAST BLOCK
+C3E1                  0932 *
+C3E1 01 FF FF         0933 LBLK     LXI      B,-1
+C3E4 09               0934          DAD      B          COMPLEMENT HL
+C3E5 23               0935          INX      H          .......TWO'S
+C3E6 45               0936          MOV      B,L        LENGTH TO REGISTER 3
+C3E7 21 00 00         0937          LXI      H,0        TELL DE WE'RE DONE
+C3EA C3 70 C3         0938          JMP      RDBLK      ONWARD TO THE END
+C3ED                  0939 *
+C3ED                  0940 *   THIS  ROUTINE TURNS THE TAPE UNITS OFF
+C3ED                  0941 *
+C3ED AF               0942 TOFF     XRA      A
+C3EE D3 FA            0943          OUT      STAPT      GIVE COMMAND
+C3F0 C9               0944          RET      .          AND GRIND TO A SLOW STOP
+C3F1                  0945 *
+C3F1                  0946 *
+C3F1 11 00 00         0947 DELAY    LXI      D,0        START LOOP
+C3F4 1B               0948 DLOP1    DCX      D          DOWN COUNT
+C3F5 7A               0949          MOV      A,D
+C3F6 B3               0950          ORA      E          TEST FOR ZERO
+C3F7 C2 F4 C3         0951          JNZ      DLOP1      IF NOT
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    19
+
+C3FA C9               0952          RET
+C3FB                  0953 *
+C3FB                  0954 *
+C3FB                  0955 *
+C3FB                  0956 *
+C3FB                  0957 *                 <<  SoL SYSTEM EQUATES  >>
+C3FB                  0958 *
+C3FB                  0959 *
+C3FB                  0960 *          VDM PARAMETERS
+C3FB                  0961 *
+C3FB                  0962 VDMEM    EQU      0CC00H     VDM SCREEN MEMORY
+C3FB                  0963 *
+C3EB                  0964 *
+C3FB                  0965 *          KEYBOARD SPECIAL KEY ASSIGNMENTS
+C3FB                  0966 *
+C3FB                  0967 DOWN     EQU      9AH
+C3FB                  0968 UP       EQU      97H
+C3FB                  0969 LEFT     EQU      81H
+C3FB                  0970 RIGHT    EQU      93H
+C3FB                  0971 LOADK    EQU      8CH        LOAD KEY
+C3FB                  0972 MODE     EQU      80H
+C3FB                  0973 CLEAR    EQU      8BH
+C3FB                  0974 HOME     EQU      08EH
+C3FB                  0975 BACKS    EQU      5FH        BACKSPACE
+C3FB                  0976 LF       EQU      10
+C3FB                  0977 CR       EQU      13
+C3FB                  0978 BLANK    EQU      ' '
+C3FB                  0979 SPACE    EQU      BLANK
+C3FB                  0980 CX       EQU      'X'-40H
+C3FB                  0981 *
+C3FB                  0982 *          PORT ASSIGNMENTS
+C3FB                  0983 *
+C3FB                  0984 STAPT    EQU      0FAH       STATUS PORT GENERAL
+C3FB                  0985 SERST    EQU      0F8H       SERIAL STATUS PORT
+C3FB                  0986 SDATA    EQU      0F9H       SERIAL DATA
+C3FB                  0987 TDATA    EQU      0FBH       TAPE DATA
+C3FB                  0988 KDATA    EQU      0FCH       KEYBOARD DATA
+C3FB                  0989 PDATA    EQU      0FDH       PARALLEL DATA
+C3FB                  0990 DSTAT    EQU      0FEH       VDM DISPLAY PARAMETER PORT
+C3FB                  0991 SENSE    EQU      0FFH       SENSE SWITCHES
+C3FB                  0992 *
+C3FB                  0993 *
+C3FB                  0994 *
+C3FB                  0995 *          BIT ASSIGNMENT MASKS
+C3FB                  0996 *
+C3FB                  0997 SCD      EQU      1          SERIAL CARRIER DETECT
+C3FB                  0998 SDSR     EQU      2          SERIAL DATA SET READY
+C3FB                  0999 SPE      EQU      4          SERIAL PARITY ERROR
+C3FB                  1000 SFE      EQU      8          SERIAL FRAMING ERROR
+C3FB                  1001 SOE      EQU      16         SERIAL OVERRUN ERROR
+C3FB                  1002 SCTS     EQU      32         SERIAL CLEAR TO SEND
+C3FB                  1003 SDR      EQU      64         SERIAL DATA READY
+C3FB                  1004 STBE     EQU      128        SERIAL TRANSMITTER BUFFER EMPTY
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    20
+
+C3FB                  1005 *
+C3FB                  1006 KDR      EQU      1          KEYBOARD DATA READY
+C3FB                  1007 PDR      EQU      2          PARALLEL DATA READY
+C3FB                  1008 PXDR     EQU      4          PARALLEL DEVICE READY
+C3FB                  1009 TFE      EQU      8          TAPE FRAMING ERROR
+C3FB                  1010 TOE      EQU      16         TAPE OVERFLOW ERROR
+C3FB                  1011 TDR      EQU      64         TAPE DATA READY
+C3FB                  1012 TTBE     EQU      128        TAPE TRANSMITTER BUFFER EMPTY
+C3FB                  1013 *
+C3FB                  1014 SOK      EQU      1          SCROLL OK FLAG
+C3FB                  1015 *
+C3FB                  1016 TAPE1    EQU      64         TAPE ONE 'ON' BIT
+C3FB                  1017 TAPE2    EQU      128        TAPE TWO
+C3FB                  1018 *
+C3FB                  1019 *
+C3FB                  1020 *
+C3FB                  1021 *
+C3FB                  1022 *               SoL SYSTEM GLOBAL AREA
+C3FB                  1023 *
+C3FB                  1024          ORG      0C800H     START OF 1K RAM AREA
+C800                  1025 *
+C800                  1026 SYSRAM   EQU      $          START OF SYSTEM RAM
+C800                  1027 SYSTP    EQU      $+1024     STACK IS AT THE TOP
+C800                  1028 *
+C800                  1029 *
+C800                  1030 *           CONSOL PARAMETER AREA
+C800                  1031 *
+C800                  1032 NCHAR    DS       1          CURRENT CHARACTER POSITION
+C801                  1033 LINE     DS       1          CURRENT LINE POSITION
+C802                  1034 BOT      DS       1          BEGINNING OF TEXT DISPLACEMENT
+C803                  1035 OPORT    DS       1          OUTPUT PORT
+C8O4                  1036 IPORT    DS       1          INPUT PORT
+C805                  1037 *
+C805                  1038 *
+C805                  1039 *
+C805                  1040 THEAD    DS       5          NAME
+C80A                  1041          DS       1          THIS BYTE MUST BE ZERO
+C80B                  1042 HTYPE    DS       1          TYPE
+C80C                  1043 BLOCK    DS       2          BLOCK SIZE
+C80E                  1044 LOADR    DS       2          LOAD ADDRESS
+C810                  1045 XEQAD    DS       2          AUTO EXECUTE ADDRESS
+C812                  1046 HSPR     DS       3          SPARES
+C815                  1047 *
+C815                  1048 HLEN     EQU      $-THEAD    LENGTH OF HEADER
+C815                  1049 *
+C815                  1050 *
+
+ACOMP   C302     ADOUT   C2DD     AINP    C016     AOUT    C007
+BACKS   005F     BGIN    C001     BLANK   0020     BLOCK   C80C
+BOT    C802      BOUT    C2E5     CHAR    C07B     CLEAR   008B
+CLERA   C26A     CLIN1   C0E9     CLINE   C0E3     COMND   C1B4
+COMTA   C194     CONT    C1CC     COPRC   C1E1     CR      000D
+CRCCK   C3C1     CREM    C13D     CRLF    C21A     CRPRC   C1DD
+
+
+                                       **   ALS-8 PROGRAM DEVELOPMENT SYSTEM   **
+
+                                               PROCESSOR TECHNOLOGY CORP.
+-== CONSOL ==-                                 6200 HOLLIS STREET
+COPYRIGHT 1976                                 EMERYVILLE, CALIF. 94608                                 PAGE    21
+
+CUR    C0C1      CX      0018     DELAY   C3F1     DFLT    C34A
+DISPT   C071     DLOOP   C2B7     DLOP1   C3F4     DLP1    C2C9
+DOWN   009A      DSTAT   00FE     DUMP    C2A1     ENLO1   C31C
+ENLO2   C324     ENLOP   C30B     ENTER   C307     ERAS1   C0CA
+ERAS2   COD6     ERAS3   C0DD     ERR1    C38E     ERR2    C38F
+ERROT   C1AD     EXEC    C335     FDCOM   C1F4     GCLIN   C1C3
+GOBAC   C056     GOBK    C05D     HBOUT   C2E2     HCONV   C24B
+HCOV1   C25B     HEOU1   C2F3     HEOUT   C2EA     HLEN    0010
+HOME   008E      HSPR    C812     HTYPE   C80B     IPORT   C804
+ITAB   C18C      KDATA   00FC     KDR     0001     KIN     C279
+KREA1   CO27     KREAD   C028     KSTAT   C022     LBLK    C3E1
+LEFT   0081      LF      000A     LINE    C801     LOADK   008C
+LOADR   C80E     LOLOO   C361     MODE    0080     NCHAR   C800
+NCOM   C20B      NEXT    C076     NPASS   C2B6     OCHAR   C081
+OK     COAD      OPORT   C803     OTAB    C184     OUTH    C2FE
+PBACK   C145     PCR     C14E     PCUR    C113     PDATA   00FD
+PDOWN   COFA     PDR     0002     PERSE   C0C5     PHOME   C0F3
+PLEFT   C1OD     PLF     C155     POVER   C2B4     PRIT    C117
+PROCS   C1D2     PROMP   C212     PUP     C104     PXDR    0004
+RDBLK   C370     RHEA1   C396     RHEAD   C394     RHED1   C3B4
+RIGHT   OO93     RTBYT   C373     SBLK    C224     SBLK1   C226
+SC     C161      SCD     0001     SCHR    C232     SCHR1   C234
+SCONV   C23E     SCROL   C098     SCTS    0020     SDATA   00F9
+SDR    0040      SDROT   C041     SDSR    0002     SENSE   00FF
+SEROT   C040     SERST   00F8     SETSP   C34B     SFE     0008
+SHE1   C247      SHEX    C244     SINP    C013     SOE     0010
+SOHL   C3A7      SOK     0001     SOUT    C004     SPACE   0020
+SPE    0004      SREA1   C036     SREAD   C037     SROL    C09C
+SSTAT   C031     SIAPT   00FA     STBE    0080     STRTA   C265
+SYSRA   C800     SYSTP   CC00     TAPE1   0040     TAPE2   0080
+TAPIN   C3C6     TBL     C165     TDATA   00FB     TDR     0040
+TERM   C270      TERR    C386     TFE     0008     THEAD   C805
+TIN    C290      TLOAD   C339     TLOD1   C354     TOE     0010
+TOFF   C3ED      TOUT    C28D     TREDY   C3D7     TSRCH   C062
+TTBL   0080      UP      0097     VDAD    C128     VDAD2   C125
+VDADD   C121     VDMEM   CC00     VDMO1   C04C     VDMOT   C04B
+XEQAD   C810
+

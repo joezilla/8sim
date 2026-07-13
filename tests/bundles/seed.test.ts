@@ -4,7 +4,7 @@ import { join } from 'path';
 import { buildMachine } from '../../src/machine/buildMachine.js';
 import { MachineSpecError, type CardContext } from '../../src/machine/MachineSpec.js';
 import { withDefaults, CardConfigError, type CardBundle } from '../../src/bundles/CardBundle.js';
-import { seedBundles, imsaiSioBundle, imsaiMioBundle, mitsDcddBundle } from '../../src/bundles/seed/index.js';
+import { seedBundles, imsaiSioBundle, imsaiMioBundle, mitsDcddBundle, imsaiMdcDioBundle, imsaiFifBundle } from '../../src/bundles/seed/index.js';
 import { InterruptController } from '../../src/interrupt/InterruptController.js';
 import type { Bus } from '../../src/bus/Bus.js';
 import type { IIODevice } from '../../src/interfaces/IIODevice.js';
@@ -147,6 +147,71 @@ describe('seed card bundles', () => {
     }
   });
 
+  it('the IMSAI MDC-DIO bundle claims only its XE/XF ports and serves its window', () => {
+    expect(imsaiMdcDioBundle.manifest.type).toBe('floppy');
+    expect(imsaiMdcDioBundle.manifest.kind).toBe('card');
+    const cfg = withDefaults(imsaiMdcDioBundle.manifest); // ioPage default 0xE
+    expect(imsaiMdcDioBundle.claims(cfg).ports).toEqual([0xee, 0xef]);
+    // No `memory` fn — the window is card-attached, not hoisted into spec.memory.
+    expect(imsaiMdcDioBundle.memory).toBeUndefined();
+
+    // The factory builds a card that serves its firmware ROM at E000.
+    const ctx: CardContext = { pic: new InterruptController(), log: () => {}, services: {} };
+    const card = imsaiMdcDioBundle.cardFactory('mdc', cfg, ctx);
+    let windowBase = -1;
+    const probeBus = {
+      attachMemory: (m: { baseAddress: number; read(o: number): number }) => {
+        windowBase = m.baseAddress;
+        expect(m.read(0)).toBe(0xc3); // stub ROM JMP vector
+      },
+      attachIODevice: () => {},
+    } as unknown as Bus;
+    card.attach(probeBus);
+    expect(windowBase).toBe(0xe000);
+  });
+
+  it('the IMSAI FIF bundle is an I/O-only floppy card claiming just port 0xFD', () => {
+    expect(imsaiFifBundle.manifest.type).toBe('floppy');
+    expect(imsaiFifBundle.manifest.kind).toBe('card');
+    const cfg = withDefaults(imsaiFifBundle.manifest); // port default 0xFD
+    expect(imsaiFifBundle.claims(cfg).ports).toEqual([0xfd]);
+    expect(imsaiFifBundle.memory).toBeUndefined(); // no memory region — full 64K RAM stays free
+    // Builds on a full-RAM machine (no memory conflict since it's I/O-only).
+    const m = buildMachine({
+      cpuKind: 'i8080',
+      clock: 'max',
+      resetVector: 0,
+      memory: [{ id: 'ram', base: 0, size: 0x10000, kind: 'ram' }],
+      cards: [{ id: 'fif', factory: imsaiFifBundle.cardFactory, config: cfg, claims: imsaiFifBundle.claims(cfg) }],
+    });
+    expect(m.cards).toHaveLength(1);
+  });
+
+  it('the Processor Technology 3P+S bundle claims 4 consecutive ports', () => {
+    const b = seedBundles.find((x) => x.manifest.name === 'proctech-3ps')!;
+    expect(b.manifest.type).toBe('serial');
+    expect(b.manifest.kind).toBe('card');
+    const cfg = withDefaults(b.manifest, { basePort: 0x10 });
+    expect(b.claims(cfg).ports).toEqual([0x10, 0x11, 0x12, 0x13]);
+    expect(b.memory).toBeUndefined(); // I/O-only card
+    // factory builds and registers exactly those 4 ports
+    const ctx: CardContext = { pic: new InterruptController(), log: () => {}, services: {} };
+    const ports: number[] = [];
+    const probeBus = { attachIODevice: (d: IIODevice) => ports.push(...d.basePorts), attachMemory: () => {} } as unknown as Bus;
+    b.cardFactory('3ps', cfg, ctx).attach(probeBus);
+    expect(ports.sort((x, y) => x - y)).toEqual([0x10, 0x11, 0x12, 0x13]);
+  });
+
+  it('the Helios II bundle claims 8 consecutive ports F0-F7', () => {
+    const b = seedBundles.find((x) => x.manifest.name === 'pt-helios')!;
+    expect(b.manifest.type).toBe('floppy');
+    expect(b.manifest.maker).toBe('Processor Technology');
+    const cfg = withDefaults(b.manifest); // basePort default 0xF0
+    expect(b.claims(cfg).ports).toEqual([0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7]);
+    const ctx: CardContext = { pic: new InterruptController(), log: () => {}, services: {} };
+    expect(() => b.cardFactory('helios', cfg, ctx)).not.toThrow();
+  });
+
   it('rejects config values outside the schema bounds', () => {
     expect(() => withDefaults(imsaiMioBundle.manifest, { basePort: 0x1ff })).toThrow(CardConfigError);
     expect(() => withDefaults(imsaiMioBundle.manifest, { basePort: -1 })).toThrow(CardConfigError);
@@ -216,6 +281,65 @@ describe('seed card bundles', () => {
       }
       await flush();
     }
+    expect(sent.length).toBeGreaterThan(0);
+    const cmd = sent[0]!.length >= 4 ? String.fromCharCode(sent[0]![0]!, sent[0]![1]!, sent[0]![2]!, sent[0]![3]!) : '?';
+    expect(['STAT', 'READ', 'WRIT']).toContain(cmd);
+  });
+
+  it('the IMSAI FIF boots its disk over the FDC transport when no in-process disks are injected', async () => {
+    // Regression: the FIF card sources disks from ctx.services.fifDisks; when a
+    // host wires only the FDC transport (services.fdc — fdcplus-web's per-instance
+    // channel), the bundle must fall back to it, or the MPU-A monitor's boot-sector
+    // DMA reads nothing, fails its 'DI' signature check, and drops to the "?" loop.
+    const romPath = join(import.meta.dirname ?? '', '../../bios/imsai-mpu-a-rom.bin');
+    if (!existsSync(romPath)) {
+      console.warn(`IMSAI MPU-A boot ROM not found at ${romPath}; skipping.`);
+      return;
+    }
+    const rom = new Uint8Array(readFileSync(romPath));
+    const romTop = 0xd800 + rom.length;
+
+    const sent: Uint8Array[] = [];
+    const fakeWs: WebSocketLike = {
+      send: (d: Uint8Array) => void sent.push(d instanceof Uint8Array ? d : new Uint8Array(d)),
+      close: () => {},
+      onmessage: null,
+      onclose: null,
+      onerror: null,
+      readyState: 1,
+    };
+
+    const sioCfg = withDefaults(imsaiSioBundle.manifest, { basePortA: 0x02, basePortB: 0x04, boardCtrlPort: 0x08 });
+    const fifCfg = withDefaults(imsaiFifBundle.manifest);
+
+    const machine = buildMachine(
+      {
+        cpuKind: 'i8080',
+        clock: 'max',
+        resetVector: 0xd800,
+        memory: [
+          { id: 'lo', base: 0x0000, size: 0xd800, kind: 'ram' },
+          { id: 'mpu-a', base: 0xd800, size: rom.length, kind: 'rom', image: rom },
+          { id: 'hi', base: romTop, size: 0x10000 - romTop, kind: 'ram' },
+        ],
+        cards: [
+          { id: 'sio', factory: imsaiSioBundle.cardFactory, config: sioCfg, claims: imsaiSioBundle.claims(sioCfg) },
+          { id: 'fif', factory: imsaiFifBundle.cardFactory, config: fifCfg, claims: imsaiFifBundle.claims(fifCfg) },
+        ],
+      },
+      { services: { fdc: fakeWs } },
+    );
+
+    const flush = () => new Promise((r) => setTimeout(r, 0));
+    let steps = 0;
+    while (steps < 5_000_000 && sent.length === 0 && !machine.cpu.halted) {
+      for (let i = 0; i < 5000 && !machine.cpu.halted; i++) {
+        machine.cpu.step();
+        steps++;
+      }
+      await flush();
+    }
+    // The FIF issued a track op to the transport — the boot read reached the disk.
     expect(sent.length).toBeGreaterThan(0);
     const cmd = sent[0]!.length >= 4 ? String.fromCharCode(sent[0]![0]!, sent[0]![1]!, sent[0]![2]!, sent[0]![3]!) : '?';
     expect(['STAT', 'READ', 'WRIT']).toContain(cmd);

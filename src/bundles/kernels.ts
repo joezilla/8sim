@@ -85,12 +85,19 @@ export const keyboardKernel: CardKernel = {
     dataPort: { type: 'u8', default: 0x01, min: 0, max: 0xff, description: 'Key data register port' },
     statusPort: { type: 'u8', default: 0x00, min: 0, max: 0xff, description: 'Key-ready status port' },
     readyMask: { type: 'u8', default: 0x01, min: 0, max: 0xff, description: 'Status bits set while a key waits' },
+    readyPolarity: {
+      type: 'enum',
+      default: 'active-high',
+      enum: ['active-high', 'active-low'],
+      description: 'Ready-bit polarity (Sol-20 keyboard is active-low)',
+    },
   },
   create: (id, cfg) =>
     new KeyboardCard(id, {
       dataPort: u8(cfg.dataPort, 0x01),
       statusPort: u8(cfg.statusPort, 0x00),
       readyMask: u8(cfg.readyMask, 0x01),
+      readyActiveLow: cfg.readyPolarity === 'active-low',
     }),
   claims: (cfg) => ({ ports: [u8(cfg.dataPort, 0x01), u8(cfg.statusPort, 0x00)] }),
 };
@@ -103,9 +110,10 @@ export const vdmKernel: CardKernel = {
   binding: 'display',
   configSchema: {
     base: { type: 'u16', default: 0xcc00, min: 0, max: 0xffff, description: 'Video RAM base' },
+    dstatPort: { type: 'u8', default: 0xfe, min: 0, max: 0xff, description: 'Display-parameter (scroll) port' },
   },
-  create: (id, cfg) => new VdmCard(id, { base: u16(cfg.base, 0xcc00) }),
-  claims: () => ({ ports: [] }),
+  create: (id, cfg) => new VdmCard(id, { base: u16(cfg.base, 0xcc00), dstatPort: u8(cfg.dstatPort, 0xfe) }),
+  claims: (cfg) => ({ ports: [u8(cfg.dstatPort, 0xfe)] }),
   memory: (cfg) => [{ id: 'vram', base: u16(cfg.base, 0xcc00), size: 0x400, kind: 'ram' }],
 };
 

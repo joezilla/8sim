@@ -1,0 +1,371 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.5.2	//
+AVOID_CW_OVERFLOW	helios_raw.c	701;"	d	file:
+BLK_DATA_BYTES	helios_ptdos.c	81;"	d	file:
+BYTES_PER_LINE	helios_ptdos.c	170;"	d	file:
+CALC_CRC1a	crc.c	/^unsigned short CALC_CRC1a(unsigned short crc, unsigned char byte)$/;"	f
+CALC_CRC1b	crc.c	55;"	d	file:
+CBIT	catweasl.c	187;"	d	file:
+CHECK_DISK_CHANGED	catweasl.c	25;"	d	file:
+CREG	catweasl.c	183;"	d	file:
+CWAwaitCReg	catweasl.c	/^CWAwaitCReg(catweasel_contr *c, int clear, int set)$/;"	f
+CWEncodeClock	catweasl.c	/^CWEncodeClock(catweasel_contr *c, int multiplier)$/;"	f	file:
+CWHZ	cwfloppy.h	92;"	d
+CWSetCReg	catweasl.c	/^CWSetCReg(catweasel_contr *c, unsigned char clear, unsigned char set)$/;"	f	file:
+CWTrack0	catweasl.c	/^CWTrack0(catweasel_contr *c)$/;"	f	file:
+CWTriggerStep	catweasl.c	/^CWTriggerStep(catweasel_contr *c)$/;"	f	file:
+CW_MEMSIZE	cwfloppy.h	6;"	d
+CatAbort	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+CatControl	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+CatControlBit	catweasl.c	/^enum CatControlBit { $/;"	g	file:
+CatDensityIn	catweasl.c	/^		    CatWProtect, CatTrack0, CatIndex, CatDensityIn$/;"	e	enum:CatStatusBit	file:
+CatDensityOut	catweasl.c	/^    CatSelect0, CatSelect1, CatMotor1, CatDensityOut$/;"	e	enum:CatControlBit	file:
+CatDirection	catweasl.c	/^    CatStep, CatSideSelect, CatMotor0, CatDirection,$/;"	e	enum:CatControlBit	file:
+CatDiskChange	catweasl.c	/^enum CatStatusBit { CatReading, CatWriting, CatDiskChange, CatUnused,$/;"	e	enum:CatStatusBit	file:
+CatIRQ	catweasl.c	/^		   CatOption, CatStartA, CatStartB, CatIRQ };$/;"	e	enum:CatRegister	file:
+CatIndex	catweasl.c	/^		    CatWProtect, CatTrack0, CatIndex, CatDensityIn$/;"	e	enum:CatStatusBit	file:
+CatMem	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+CatMotor0	catweasl.c	/^    CatStep, CatSideSelect, CatMotor0, CatDirection,$/;"	e	enum:CatControlBit	file:
+CatMotor1	catweasl.c	/^    CatSelect0, CatSelect1, CatMotor1, CatDensityOut$/;"	e	enum:CatControlBit	file:
+CatOption	catweasl.c	/^		   CatOption, CatStartA, CatStartB, CatIRQ };$/;"	e	enum:CatRegister	file:
+CatReading	catweasl.c	/^enum CatStatusBit { CatReading, CatWriting, CatDiskChange, CatUnused,$/;"	e	enum:CatStatusBit	file:
+CatRegister	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	g	file:
+CatSelect0	catweasl.c	/^    CatSelect0, CatSelect1, CatMotor1, CatDensityOut$/;"	e	enum:CatControlBit	file:
+CatSelect1	catweasl.c	/^    CatSelect0, CatSelect1, CatMotor1, CatDensityOut$/;"	e	enum:CatControlBit	file:
+CatSideSelect	catweasl.c	/^    CatStep, CatSideSelect, CatMotor0, CatDirection,$/;"	e	enum:CatControlBit	file:
+CatStartA	catweasl.c	/^		   CatOption, CatStartA, CatStartB, CatIRQ };$/;"	e	enum:CatRegister	file:
+CatStartB	catweasl.c	/^		   CatOption, CatStartA, CatStartB, CatIRQ };$/;"	e	enum:CatRegister	file:
+CatStatusBit	catweasl.c	/^enum CatStatusBit { CatReading, CatWriting, CatDiskChange, CatUnused,$/;"	g	file:
+CatStep	catweasl.c	/^    CatStep, CatSideSelect, CatMotor0, CatDirection,$/;"	e	enum:CatControlBit	file:
+CatTrack0	catweasl.c	/^		    CatWProtect, CatTrack0, CatIndex, CatDensityIn$/;"	e	enum:CatStatusBit	file:
+CatUnused	catweasl.c	/^enum CatStatusBit { CatReading, CatWriting, CatDiskChange, CatUnused,$/;"	e	enum:CatStatusBit	file:
+CatWProtect	catweasl.c	/^		    CatWProtect, CatTrack0, CatIndex, CatDensityIn$/;"	e	enum:CatStatusBit	file:
+CatWriting	catweasl.c	/^enum CatStatusBit { CatReading, CatWriting, CatDiskChange, CatUnused,$/;"	e	enum:CatStatusBit	file:
+DATA_CRCERR	helios_ptdos.c	21;"	d	file:
+DATA_PTR	helios_ptdos.c	34;"	d	file:
+DATA_SIZE	helios_ptdos.c	25;"	d	file:
+DEBUG_PCI	cwpci.c	23;"	d	file:
+DECODE_ERR	helios_ptdos.c	495;"	d	file:
+DECODE_WARNING	helios_ptdos.c	494;"	d	file:
+DIR_BLOCK_SIZE	helios_ptdos.c	48;"	d	file:
+DIR_FILE_BLKS	helios_ptdos.c	61;"	d	file:
+DIR_FILE_ID	helios_ptdos.c	52;"	d	file:
+DIR_FILE_NAME	helios_ptdos.c	/^DIR_FILE_NAME(svh_disk_t *dsk, int t, int s, int i)$/;"	f	file:
+DIR_FILE_PROT	helios_ptdos.c	50;"	d	file:
+DIR_FILE_SEC	helios_ptdos.c	58;"	d	file:
+DIR_FILE_TRK	helios_ptdos.c	59;"	d	file:
+DIR_FILE_TYPE	helios_ptdos.c	46;"	d	file:
+DIR_HAS_INDEX	helios_ptdos.c	56;"	d	file:
+DIR_IDX_SEC	helios_ptdos.c	54;"	d	file:
+DIR_IDX_TRK	helios_ptdos.c	55;"	d	file:
+DIR_NEXT_FREE_BYTE	helios_ptdos.c	44;"	d	file:
+DIR_NUM_ENTRIES	helios_ptdos.c	42;"	d	file:
+DIR_U16	helios_ptdos.c	40;"	d	file:
+DIR_U8	helios_ptdos.c	39;"	d	file:
+DISK_DIRECTORY	helios_ptdos.h	18;"	d
+DISK_EXTRACT	helios_ptdos.h	19;"	d
+DISK_FILECHECK	helios_ptdos.h	22;"	d
+DISK_QUICKDIR	helios_ptdos.h	17;"	d
+DISK_XHEX	helios_ptdos.h	20;"	d
+DISK_XIMAGE	helios_ptdos.h	21;"	d
+ENTRIES_PER_SECTOR	helios_ptdos.c	829;"	d	file:
+FALSE	wildcard.h	24;"	d
+FILES_PER_DIR_HEADER	helios_ptdos.h	14;"	d
+FILTER_IMAGE	helios_ptdos.c	/^       FILTER_IMAGE };  \/\/ PTDOS image format$/;"	e	file:
+FILTER_NONE	helios_ptdos.c	/^enum { FILTER_NONE,	\/\/ no interpretation$/;"	e	file:
+FM_DATA	helios_raw.c	/^       FM_DATA,		\/\/ parsing the data portion$/;"	e	file:
+FM_DEBUG	helios_raw.c	243;"	d	file:
+FM_HEADER	helios_raw.c	/^       FM_HEADER,	\/\/ reading header data$/;"	e	file:
+FM_POSTAMBLE	helios_raw.c	/^       FM_POSTAMBLE	\/\/ trailing junk$/;"	e	file:
+FM_PREAMBLE1	helios_raw.c	/^enum { FM_PREAMBLE1,	\/\/ scanning zeros before$/;"	e	file:
+FM_PREAMBLE2	helios_raw.c	/^       FM_PREAMBLE2,	\/\/ scanning zeros before data$/;"	e	file:
+FM_SYNC1	helios_raw.c	/^       FM_SYNC1,	\/\/ parsing the pre-header sync byte$/;"	e	file:
+FM_SYNC2	helios_raw.c	/^       FM_SYNC2,	\/\/ parsing the post-header sync byte$/;"	e	file:
+FM_SYNC3	helios_raw.c	/^       FM_SYNC3,	\/\/ parsing the pre-data sync byte$/;"	e	file:
+FM_SYNC4	helios_raw.c	/^       FM_SYNC4,	\/\/ parsing the post-data sync byte$/;"	e	file:
+FULL_IDX	helios_raw.c	743;"	d	file:
+HALF_IDX	helios_raw.c	742;"	d	file:
+HDR_BYTES	helios_ptdos.c	95;"	d	file:
+HDR_BYTES_USED	helios_ptdos.c	104;"	d	file:
+HDR_CRCERR	helios_ptdos.c	20;"	d	file:
+HDR_FILE_ID	helios_ptdos.c	92;"	d	file:
+HDR_IS_FIRST	helios_ptdos.c	99;"	d	file:
+HDR_IS_LAST	helios_ptdos.c	102;"	d	file:
+HDR_NXT_SEC	helios_ptdos.c	86;"	d	file:
+HDR_NXT_TRK	helios_ptdos.c	87;"	d	file:
+HDR_PREV_SEC	helios_ptdos.c	89;"	d	file:
+HDR_PREV_TRK	helios_ptdos.c	90;"	d	file:
+HDR_PTR	helios_ptdos.c	33;"	d	file:
+HDR_RSVD	helios_ptdos.c	97;"	d	file:
+HDR_SEC	helios_ptdos.c	83;"	d	file:
+HDR_SECTORS	helios_ptdos.c	94;"	d	file:
+HDR_SIZE	helios_ptdos.c	24;"	d	file:
+HDR_TRK	helios_ptdos.c	84;"	d	file:
+HDR_U16	helios_ptdos.c	78;"	d	file:
+HDR_U8	helios_ptdos.c	77;"	d	file:
+HSECTORS	helios.h	14;"	d
+INB	catweasl.c	/^unsigned char INB(unsigned short port)$/;"	f
+INREG	catweasl.c	184;"	d	file:
+IsWildcardMatch	wildcard.c	/^int IsWildcardMatch (char *wildcardString, char *stringToCheck, int caseSensitive)$/;"	f
+JoyDat	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	e	enum:CatRegister	file:
+Joybutton	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	e	enum:CatRegister	file:
+Joybuttondir	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	e	enum:CatRegister	file:
+KeyDat	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	e	enum:CatRegister	file:
+KeyStatus	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+MAX_IDXS	helios_raw.c	745;"	d	file:
+MK1_DEFAULT_PORT	cwfloppy.h	95;"	d
+MK1_MAX_PORT	cwfloppy.h	97;"	d
+MK1_MIN_PORT	cwfloppy.h	96;"	d
+MK3_MAX_CARDS	cwfloppy.h	98;"	d
+Mk1ControlBit	catweasl.c	/^unsigned char Mk1ControlBit[] = {$/;"	v
+Mk1Reg	catweasl.c	/^unsigned char Mk1Reg[] = {$/;"	v
+Mk1StatusBit	catweasl.c	/^unsigned char Mk1StatusBit[] = {$/;"	v
+Mk3ControlBit	catweasl.c	/^unsigned char Mk3ControlBit[] = {$/;"	v
+Mk3Reg	catweasl.c	/^unsigned char Mk3Reg[] = {$/;"	v
+Mk3StatusBit	catweasl.c	/^unsigned char Mk3StatusBit[] = {$/;"	v
+NNN	testhist.c	28;"	d	file:
+NS_SECTORS_PER_TRACK	vdisk_svd.h	25;"	d
+OUTB	catweasl.c	/^void OUTB(unsigned char b, unsigned short port)$/;"	f
+OUTREG	catweasl.c	185;"	d	file:
+PaddleSelect	catweasl.c	/^enum CatRegister { JoyDat, PaddleSelect, Joybutton, Joybuttondir, KeyDat,$/;"	e	enum:CatRegister	file:
+SBIT	catweasl.c	186;"	d	file:
+SECTORS	helios.h	15;"	d
+SECTOR_HAS_DATA	helios_ptdos.c	30;"	d	file:
+SECTOR_HAS_HDR	helios_ptdos.c	28;"	d	file:
+SEGST_0	helios_ptdos.c	/^enum { SEGST_0,		\/\/ between segments$/;"	e	file:
+SEGST_1	helios_ptdos.c	/^       SEGST_1,		\/\/ between 1st and 2nd header bytes$/;"	e	file:
+SEGST_2	helios_ptdos.c	/^       SEGST_2, 	\/\/ between 2nd and 3rd header bytes$/;"	e	file:
+SEGST_3	helios_ptdos.c	/^       SEGST_3,		\/\/ between 3rd and 4th header bytes$/;"	e	file:
+SEGST_4	helios_ptdos.c	/^       SEGST_4 };	\/\/ in the data portion of the segment$/;"	e	file:
+STEP_USEC	catweasl.c	27;"	d	file:
+STREAM_BINARY	helios_ptdos.c	/^enum { STREAM_BINARY,	\/\/ binary file output$/;"	e	file:
+STREAM_HEX	helios_ptdos.c	/^       STREAM_HEX };	\/\/ intel HEX output$/;"	e	file:
+SVD_ACCESSERROR	vdisk_svd.h	138;"	d
+SVD_BADCRC	vdisk_svd.h	140;"	d
+SVD_BADFILE	vdisk_svd.h	136;"	d
+SVD_BADFORMAT	vdisk_svd.h	139;"	d
+SVD_FILEEXISTS	vdisk_svd.h	134;"	d
+SVD_FILENAME_SIZE	vdisk_svd.h	20;"	d
+SVD_FORMAT_SVH	vdisk_svd.h	32;"	d
+SVD_FORMAT_SVN	vdisk_svd.h	31;"	d
+SVD_HDR_SIZE	vdisk_svd.h	18;"	d
+SVD_LABEL_SIZE	vdisk_svd.h	19;"	d
+SVD_MAXTRACKS	vdisk_svd.h	24;"	d
+SVD_MINTRACKS	vdisk_svd.h	23;"	d
+SVD_NOFILE	vdisk_svd.h	135;"	d
+SVD_OK	vdisk_svd.h	133;"	d
+SVD_OPENERROR	vdisk_svd.h	137;"	d
+SVH_BLKSIZE	vdisk_svh_lib.c	25;"	d	file:
+SVH_DATA_OFFSET	vdisk_svh_lib.c	27;"	d	file:
+SVH_FMT_CRCERR_DATA	vdisk_svh_lib.h	292;"	d
+SVH_FMT_CRCERR_HDR	vdisk_svh_lib.h	291;"	d
+SVH_FMT_FIRST_DATA	vdisk_svh_lib.h	289;"	d
+SVH_FMT_HAS_DATA	vdisk_svh_lib.h	288;"	d
+SVH_FMT_HAS_HEADER	vdisk_svh_lib.h	287;"	d
+SVH_FMT_LAST_DATA	vdisk_svh_lib.h	290;"	d
+SVH_HDRSIZE	vdisk_svh_lib.h	279;"	d
+SVH_HDR_OFFSET	vdisk_svh_lib.c	26;"	d	file:
+SVH_MAGIC_STR	vdisk_svd.h	130;"	d
+SVH_SECSIZE	vdisk_svh_lib.c	23;"	d	file:
+SVH_SECTORS_PER_TRACK	vdisk_svd.h	28;"	d
+SVH_SECTOR_OVERHEAD	vdisk_svh_lib.c	24;"	d	file:
+SVH_TRACKS_PER_DISK	vdisk_svd.h	29;"	d
+SVN_MAGIC_STR	vdisk_svd.h	129;"	d
+SidCommand	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+SidDat	catweasl.c	/^		   KeyStatus, SidDat, SidCommand, CatMem, CatAbort, CatControl,$/;"	e	enum:CatRegister	file:
+TRACKS	helios.h	13;"	d
+TRUE	wildcard.h	28;"	d
+U16	helios_ptdos.c	866;"	d	file:
+U8	helios_ptdos.c	865;"	d	file:
+WARN_THOLD	helios_ptdos.c	493;"	d	file:
+_CWFLOPPY_H	cwfloppy.h	4;"	d
+_HELIOS_BYT_H_	helios_byt.h	9;"	d
+_HELIOS_H_	helios.h	4;"	d
+_HELIOS_PTDOS_H_	helios_ptdos.h	9;"	d
+_HELIOS_RAW_H_	helios_raw.h	27;"	d
+_HELIOS_SVH_H_	helios_svh.h	7;"	d
+_TYPES_H_	types.h	2;"	d
+_VDISK_SVD_H_	vdisk_svd.h	13;"	d
+_VDISK_SVH_LIB_H_	vdisk_svh_lib.h	11;"	d
+c	helios_raw.c	/^struct catweasel_contr c;	\/\/ cached info about controller we're using$/;"	v
+c	testhist.c	/^struct catweasel_contr c;$/;"	v
+calc_crc	crc.c	/^unsigned short calc_crc(unsigned short crc,$/;"	f
+calc_crc1	crc.c	58;"	d	file:
+capture_time	helios_raw.c	715;"	d	file:
+capture_time	helios_raw.c	720;"	d	file:
+catweasel_abort	catweasl.c	/^catweasel_abort(catweasel_contr *c)$/;"	f
+catweasel_await_index	catweasl.c	/^int catweasel_await_index(catweasel_drive *d)$/;"	f
+catweasel_contr	cwfloppy.h	/^typedef struct catweasel_contr {$/;"	s
+catweasel_contr	cwfloppy.h	/^} catweasel_contr;$/;"	t
+catweasel_detect_drive	catweasl.c	/^catweasel_detect_drive(catweasel_drive *d)$/;"	f
+catweasel_disk_changed	catweasl.c	/^catweasel_disk_changed(catweasel_drive *d)$/;"	f
+catweasel_drive	cwfloppy.h	/^typedef struct catweasel_drive {$/;"	s
+catweasel_drive	cwfloppy.h	/^} catweasel_drive;$/;"	t
+catweasel_fillmem	catweasl.c	/^catweasel_fillmem(catweasel_contr *c, unsigned char byte)$/;"	f
+catweasel_free_controller	catweasl.c	/^catweasel_free_controller(catweasel_contr *c)$/;"	f
+catweasel_get_byte	catweasl.c	/^unsigned char catweasel_get_byte(catweasel_contr *c)$/;"	f
+catweasel_init_controller	catweasl.c	/^catweasel_init_controller(catweasel_contr *c, int iobase, int mk)$/;"	f
+catweasel_memtest	catweasl.c	/^catweasel_memtest(catweasel_contr *c)$/;"	f
+catweasel_put_byte	catweasl.c	/^void catweasel_put_byte(catweasel_contr *c, unsigned char val)$/;"	f
+catweasel_read	catweasl.c	/^catweasel_read(catweasel_drive *d, int side, int clockmult, int time)$/;"	f
+catweasel_reset_pointer	catweasl.c	/^catweasel_reset_pointer(catweasel_contr *c)$/;"	f
+catweasel_seek	catweasl.c	/^catweasel_seek(catweasel_drive *d, int t)$/;"	f
+catweasel_select	catweasl.c	/^catweasel_select(catweasel_contr *c, int dr0, int dr1)$/;"	f
+catweasel_set_hd	catweasl.c	/^void catweasel_set_hd(catweasel_contr *c, int hd)$/;"	f
+catweasel_set_motor	catweasl.c	/^catweasel_set_motor(catweasel_drive *d, int on)$/;"	f
+catweasel_usleep	catweasl.c	/^catweasel_usleep(unsigned int _useconds)$/;"	f
+catweasel_write	catweasl.c	/^catweasel_write(catweasel_drive *d, int side, int clockmult, int time)$/;"	f
+catweasel_write_protected	catweasl.c	/^catweasel_write_protected(catweasel_drive *d)$/;"	f
+cleanup	helios_raw.c	/^cleanup()$/;"	f	file:
+clockmult	helios_raw.c	/^const int clockmult =   2;	\/\/ sample at 7 MHz * clockmult (1, 2, 4)$/;"	v
+compute_sector_pos	vdisk_svh_lib.c	/^compute_sector_pos(svd_t *svd, int track, int sector)$/;"	f	file:
+contr	cwfloppy.h	/^    struct catweasel_contr *contr; \/* The controller this drive belongs to *\/$/;"	m	struct:catweasel_drive
+crc16_table	crc.c	/^unsigned short const crc16_table[256] = {$/;"	v
+ctrl	cwfloppy.h	/^    unsigned char *ctrl;$/;"	m	struct:catweasel_contr
+cwclock	testhist.c	/^int cwclock  = 1;   \/\/ 14 MHz$/;"	v
+data	helios.h	/^	uint8 *data;		\/\/ associated data$/;"	m
+data_bytes	helios.h	/^	int   data_bytes;	\/\/ size of data block (0 if none)$/;"	m
+data_error	helios.h	/^	int   data_error;	\/\/ 0=OK, !=0 is error in decoding$/;"	m
+decode_track_data	helios_raw.c	/^decode_track_data(svh_disk_t *disk, int track, int fast, int slow,$/;"	f	file:
+density	vdisk_svd.h	/^    int  density;	\/\/ single or double density$/;"	m
+density	vdisk_svd.h	/^    uint16 density;	\/\/ single or double density$/;"	m
+disk_decode_file	helios_ptdos.c	/^disk_decode_file(svh_disk_t *disk, FILE *msg,$/;"	f	file:
+disk_free	main.c	/^disk_free(svh_disk_t *disk)$/;"	f
+disk_init	main.c	/^disk_init(svh_disk_t *disk)$/;"	f
+diskindrive	cwfloppy.h	/^    int diskindrive;               \/* 0 = no disk, 1 = disk in drive *\/$/;"	m	struct:catweasel_drive
+dos_filename	helios_ptdos.c	/^dos_filename(char *fname, int action)$/;"	f	file:
+drives	cwfloppy.h	/^    catweasel_drive drives[2];     \/* max. two drives on each controller *\/$/;"	m	struct:catweasel_contr
+dump_byt_file	helios_byt.c	/^dump_byt_file(const char *filename, svh_disk_t *disk)$/;"	f
+dump_raw_track	helios_raw.c	/^dump_raw_track(FILE *fp, int track, uint8 *sample, int idx_start[])$/;"	f
+dump_svh_file	helios_svh.c	/^dump_svh_file(const char *filename, svh_disk_t *disk)$/;"	f
+eval_histo	testhist.c	/^static void eval_histo(unsigned int *histogram)$/;"	f	file:
+f	testhist.c	/^FILE *f;$/;"	v
+file_is_byt	helios_byt.c	/^file_is_byt(const char *filename)$/;"	f
+file_is_raw	helios_raw.c	/^file_is_raw(const char *filename)$/;"	f
+file_is_svh	helios_svh.c	/^file_is_svh(const char *filename)$/;"	f
+filename	vdisk_svd.h	/^    char filename[SVD_FILENAME_SIZE];	\/\/ path to file on disk$/;"	m
+filetype_symbol	helios_ptdos.c	/^filetype_symbol(int file_type)$/;"	f
+filter_abort	helios_ptdos.c	/^filter_abort()$/;"	f	file:
+filter_byte	helios_ptdos.c	/^filter_byte(int byte)$/;"	f	file:
+filter_check	helios_ptdos.c	/^static int filter_check;	\/\/ report errors found$/;"	v	file:
+filter_end	helios_ptdos.c	/^filter_end()$/;"	f	file:
+filter_msg	helios_ptdos.c	/^static FILE *filter_msg;	\/\/ cached error message handle$/;"	v	file:
+filter_start	helios_ptdos.c	/^filter_start(int action, char *filename, FILE *msg)$/;"	f	file:
+filter_type	helios_ptdos.c	/^static int filter_type;$/;"	v	file:
+fm_bits	helios_raw.c	/^static int fm_bits;		\/\/ count bits received$/;"	v	file:
+fm_blk	helios_raw.c	/^static uint8 fm_blk[8192];	\/\/ decoded data for current block$/;"	v	file:
+fm_bytes	helios_raw.c	/^static int fm_bytes;		\/\/ count bytes received$/;"	v	file:
+fm_data	helios_raw.c	/^static int fm_data;		\/\/ accumulated bits$/;"	v	file:
+fm_decode_bit	helios_raw.c	/^fm_decode_bit(svh_disk_t *disk, int new_sector, int track, int sector, int big, int samp)$/;"	f	file:
+fm_decode_init	helios_raw.c	/^fm_decode_init(void)$/;"	f	file:
+fm_error	helios_raw.c	/^static int fm_error;		\/\/ unrecoverable error$/;"	v	file:
+fm_first_sector	helios_raw.c	/^static int fm_first_sector;	\/\/ which sector started the data block$/;"	v	file:
+fm_name	helios_raw.c	/^static char *fm_name[] = {$/;"	v	file:
+fm_prev_short	helios_raw.c	/^static int fm_prev_short;	\/\/ used for grouping edges in "1" bits$/;"	v	file:
+fm_state	helios_raw.c	/^     } fm_state;$/;"	v
+format	vdisk_svd.h	/^    char format[64];	\/\/ "magic" file format string$/;"	m
+format	vdisk_svd.h	/^    int  format;	\/\/ one of SVD_FORMAT_{SVN,SVH}$/;"	m
+get_first_line_of_file	main.c	/^get_first_line_of_file(const char *filename)$/;"	f
+handler	helios_raw.c	/^handler(int sig)$/;"	f	file:
+hdr_bytes	helios.h	/^	int   hdr_bytes;	\/\/ size of header block (0 if none)$/;"	m
+hdr_error	helios.h	/^	int   hdr_error;	\/\/ 0=OK, !=0 is error in decoding$/;"	m
+header	helios.h	/^	uint8 *header;		\/\/ header block$/;"	m
+hex_1st_addr	helios_ptdos.c	/^static int hex_1st_addr;	\/\/ address of first byte on line$/;"	v	file:
+hex_bytes	helios_ptdos.c	/^static int hex_bytes;		\/\/ number of bytes emitted on this line$/;"	v	file:
+hex_cur_addr	helios_ptdos.c	/^static int hex_cur_addr;	\/\/ address of next byte to emit$/;"	v	file:
+hex_data	helios_ptdos.c	/^static unsigned char hex_data[BYTES_PER_LINE];$/;"	v	file:
+hex_flush	helios_ptdos.c	/^hex_flush(void)$/;"	f	file:
+histo_track	helios_raw.c	/^histo_track(int *fast, int *slow, uint8 *sample, int num_samples)$/;"	f	file:
+histo_track	testhist.c	/^static void histo_track(int drive, int track, int side, unsigned int *buf) $/;"	f	file:
+inb	catweasl.c	41;"	d	file:
+inb	catweasl.c	57;"	d	file:
+inb	catweasl.c	59;"	d	file:
+iobase	cwfloppy.h	/^    int iobase;                    \/* 0 = not present *\/$/;"	m	struct:catweasel_contr
+label	helios.h	/^    char  *label;	\/\/ disk label; can be multiline (\\n separators)$/;"	m
+label	vdisk_svd.h	/^    char label[SVD_LABEL_SIZE];	\/\/ diskette label (at offset 1024)$/;"	m
+label	vdisk_svd.h	/^    char label[SVD_LABEL_SIZE];	\/\/ diskette label$/;"	m
+label_append	main.c	/^label_append(char **d, char *s)$/;"	f
+label_emit	main.c	/^label_emit(FILE *fp, char *label)$/;"	f
+legal_ptdos_filename	helios_ptdos.c	/^legal_ptdos_filename(char *fname)$/;"	f	file:
+main	crc.c	/^main(int argc, char **argv)$/;"	f
+main	main.c	/^main(int argc, char** argv)$/;"	f
+main	testhist.c	/^int main(int argc, char **argv) {$/;"	f
+min	vdisk_svh_lib.c	17;"	d	file:
+mk	cwfloppy.h	/^    int mk;                        \/* 1 = Catweasel MK1, 3 = MK3 *\/$/;"	m	struct:catweasel_contr
+msdelay	cwfloppy.h	/^    void (*msdelay)(int ms);       \/* microseconds delay routine *\/$/;"	m	struct:catweasel_contr
+number	cwfloppy.h	/^    int number;                    \/* Drive number: 0 or 1 *\/$/;"	m	struct:catweasel_drive
+outb	catweasl.c	42;"	d	file:
+outb	catweasl.c	58;"	d	file:
+outb	catweasl.c	60;"	d	file:
+pad	vdisk_svd.h	/^    uint8  pad[1024 - 64 - 6*sizeof(uint16)];$/;"	m
+pci_errstr	cwpci.c	/^pci_errstr(int code)$/;"	f
+pci_find	cwpci.c	/^pci_find(int vendorID, int deviceID, int index,$/;"	f
+pci_find_catweasel	cwpci.c	/^pci_find_catweasel(int index)$/;"	f
+pci_install_check	cwpci.c	/^pci_install_check(void)$/;"	f
+pci_read_config_dword	cwpci.c	/^pci_read_config_dword(int bus, int device, int func,$/;"	f
+ptdos_disk_decode	helios_ptdos.c	/^ptdos_disk_decode(svh_disk_t *disk, int action, char *filespec)$/;"	f
+read_byt_block	helios_byt.c	/^read_byt_block(FILE *fp, char *line, svh_disk_t *disk)$/;"	f	file:
+read_byt_file	helios_byt.c	/^read_byt_file(const char *filename, svh_disk_t *disk)$/;"	f
+read_disk	helios_raw.c	/^read_disk(char *filename, char *label, int drive, int qdir, svh_disk_t *disk)$/;"	f
+read_raw_file	helios_raw.c	/^read_raw_file(const char *filename, svh_disk_t *disk)$/;"	f
+read_svh_file	helios_svh.c	/^read_svh_file(const char *filename, svh_disk_t *disk)$/;"	f
+read_track	helios_raw.c	/^read_track(int drive, int track, uint8 *sample, int *sector_offset)$/;"	f	file:
+readtime	testhist.c	/^int readtime = 167; \/\/ 167 ms (-1 is index to index)$/;"	v
+reg	cwfloppy.h	/^    unsigned char *reg;$/;"	m	struct:catweasel_contr
+retries	helios_raw.c	/^const int retries   =  10;	\/\/ # of times to retry failing track$/;"	v
+rev_ms	helios_raw.c	/^const int rev_ms    = 167;	\/\/ # of milliseconds per revolution$/;"	v
+safe_malloc	main.c	/^safe_malloc(size_t bytes)$/;"	f
+sector	helios.h	/^    } sector[SECTORS];$/;"	m
+sectors	vdisk_svd.h	/^    int  sectors;	\/\/ sectors per track$/;"	m
+sectors	vdisk_svd.h	/^    uint16 sectors;	\/\/ sectors per track$/;"	m
+seg_addr	helios_ptdos.c	/^static int seg_addr;	\/\/ address of byte getting dumped$/;"	v	file:
+seg_len	helios_ptdos.c	/^static int seg_len;	\/\/ number of bytes left in image segment$/;"	v	file:
+seg_state	helios_ptdos.c	/^static int seg_state;	\/\/ where we are interpreting the byte stream$/;"	v	file:
+side	helios_raw.c	/^const int side = 0;	\/\/ doesn't matter for helios$/;"	v
+sides	vdisk_svd.h	/^    int  sides;		\/\/ sides per disk$/;"	m
+sides	vdisk_svd.h	/^    uint16 sides;	\/\/ sides per disk$/;"	m
+spinup_ms	helios_raw.c	/^const int spinup_ms = 750;	\/\/ # of milliseconds to spin up to speed$/;"	v
+stat	cwfloppy.h	/^    unsigned char *stat;$/;"	m	struct:catweasel_contr
+stream_abort	helios_ptdos.c	/^stream_abort(void)$/;"	f	file:
+stream_emit	helios_ptdos.c	/^stream_emit(int addr, unsigned char byte)$/;"	f	file:
+stream_end	helios_ptdos.c	/^stream_end(int start_addr)$/;"	f	file:
+stream_fmt	helios_ptdos.c	/^static int stream_fmt;	\/\/ what format to save data$/;"	v	file:
+stream_fp	helios_ptdos.c	/^static FILE *stream_fp;		\/\/ output file handle$/;"	v	file:
+stream_msg	helios_ptdos.c	/^static FILE *stream_msg;	\/\/ error file handle$/;"	v	file:
+stream_start	helios_ptdos.c	/^stream_start(char *filename, int format, FILE *msg)$/;"	f	file:
+strip_line_ending	main.c	/^strip_line_ending(char *p)$/;"	f
+svd_header_t	vdisk_svd.h	/^} svd_header_t;$/;"	t
+svd_read_file_header	vdisk_svd.c	/^svd_read_file_header(const char *filename, svd_t *svd)$/;"	f
+svd_t	vdisk_svd.h	/^} svd_t;$/;"	t
+svd_write_file_header	vdisk_svd.c	/^svd_write_file_header(svd_t *svd)$/;"	f
+svh_disk_t	helios.h	/^} svh_disk_t;$/;"	t
+svh_format	vdisk_svh_lib.c	/^svh_format(const char *filename, int writeprotect, char *label)$/;"	f
+svh_read_blk_data	vdisk_svh_lib.c	/^svh_read_blk_data(svd_t *svd, int track, int sector,$/;"	f
+svh_read_raw_sector	vdisk_svh_lib.c	/^svh_read_raw_sector(svd_t *svd, int track, int sector,$/;"	f	file:
+svh_read_sec_header	vdisk_svh_lib.c	/^svh_read_sec_header(svd_t *svd, int track, int sector,$/;"	f
+svh_write_blk_data	vdisk_svh_lib.c	/^svh_write_blk_data(svd_t *svd, int track, int sector, int badcrc,$/;"	f
+svh_write_raw_sector	vdisk_svh_lib.c	/^svh_write_raw_sector(svd_t *svd, int track, int sector,$/;"	f	file:
+svh_write_sec_header	vdisk_svh_lib.c	/^svh_write_sec_header(svd_t *svd, int track, int sector, int badcrc,$/;"	f
+track	cwfloppy.h	/^    int track;                     \/* current r\/w head position (0..79) *\/$/;"	m	struct:catweasel_drive
+trackbuffer	testhist.c	/^unsigned char trackbuffer[18*512];$/;"	v
+tracks	vdisk_svd.h	/^    int  tracks;	\/\/ tracks per side$/;"	m
+tracks	vdisk_svd.h	/^    uint16 tracks;	\/\/ tracks per side$/;"	m
+trk	helios.h	/^    trk_t trk[TRACKS];$/;"	m
+trk_t	helios.h	/^} trk_t;$/;"	t
+type	cwfloppy.h	/^    int type;                      \/* 0 = not present, 1 = 3.5" *\/$/;"	m	struct:catweasel_drive
+uint16	cwpci.c	/^typedef unsigned short uint16;$/;"	t	file:
+uint16	types.h	/^typedef unsigned short uint16;$/;"	t
+uint32	cwpci.c	/^typedef unsigned long uint32;$/;"	t	file:
+uint8	types.h	/^typedef unsigned char  uint8;$/;"	t
+uppercase	helios_ptdos.c	/^uppercase(char *p)$/;"	f	file:
+usage	main.c	/^usage(const char *fmt, ...)$/;"	f
+vdisk_errstring	vdisk_svd.c	/^vdisk_errstring(int err)$/;"	f
+version	vdisk_svd.h	/^    uint16 version;	\/\/ subtype of format$/;"	m
+wildcard	helios_ptdos.c	/^wildcard(char *name, char *spec)$/;"	f	file:
+wprot	cwfloppy.h	/^    int wprot;                     \/* 0 = not, 1 = write protected *\/$/;"	m	struct:catweasel_drive
+writeprot	vdisk_svd.h	/^    int  writeprot;	\/\/ 1=read only disk$/;"	m
+writeprot	vdisk_svd.h	/^    uint16 writeprot;	\/\/ 1=read only disk$/;"	m

@@ -1,6 +1,6 @@
 {
   "name": "@joezilla/8sim",
-  "version": "0.10.0",
+  "version": "0.12.0",
   "description": "Intel 8080 / Zilog Z80 CPU simulator with an S-100 bus, pluggable cards, and a machine builder.",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,6 +29,12 @@
     "test:watch": "vitest",
     "boot:cpm": "esbuild examples/boot-cpm.ts --bundle --platform=node --format=esm --outfile=examples/boot-cpm.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-cpm.mjs",
     "boot:cpm:z80": "esbuild examples/boot-cpm-z80.ts --bundle --platform=node --format=esm --outfile=examples/boot-cpm-z80.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-cpm-z80.mjs",
+    "boot:imdos": "esbuild examples/boot-imdos.ts --bundle --platform=node --format=esm --outfile=examples/boot-imdos.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-imdos.mjs",
+    "boot:fif": "esbuild examples/boot-fif.ts --bundle --platform=node --format=esm --outfile=examples/boot-fif.mjs --log-level=error && node --env-file-if-exists=.env examples/boot-fif.mjs",
+    "example:3ps": "esbuild examples/3ps-echo.ts --bundle --platform=node --format=esm --outfile=examples/3ps-echo.mjs --log-level=error && node examples/3ps-echo.mjs",
+    "boot:cuter": "esbuild examples/boot-cuter.ts --bundle --platform=node --format=esm --outfile=examples/boot-cuter.mjs --log-level=error && node examples/boot-cuter.mjs",
+    "boot:solos": "esbuild examples/boot-solos.ts --bundle --platform=node --format=esm --outfile=examples/boot-solos.mjs --log-level=error && node examples/boot-solos.mjs",
+    "boot:helios": "esbuild examples/boot-helios.ts --bundle --platform=node --format=esm --outfile=examples/boot-helios.mjs --log-level=error && node examples/boot-helios.mjs",
     "fixtures:z80": "curl -fsSL -o tests/fixtures/prelim.com https://raw.githubusercontent.com/superzazu/z80/master/roms/prelim.com && curl -fsSL -o tests/fixtures/zexdoc.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexdoc.com && curl -fsSL -o tests/fixtures/zexall.com https://raw.githubusercontent.com/anotherlin/z80emu/master/testfiles/zexall.com && echo 'Z80 test fixtures downloaded to tests/fixtures/'"
   },
   "devDependencies": {
