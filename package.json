@@ -19,7 +19,8 @@
     "url": "git+https://github.com/joezilla/8sim.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "scripts": {
     "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/8sim.browser.js",
