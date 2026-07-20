@@ -7,6 +7,7 @@ import { VdmCard } from '../cards/VdmCard.js';
 import { DazzlerCard } from '../cards/DazzlerCard.js';
 import { RtcCard, type RtcClock } from '../cards/RtcCard.js';
 import { BankRamCard } from '../cards/BankRamCard.js';
+import { BootRomCard } from '../cards/BootRomCard.js';
 
 const u8 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xff : fallback);
 const u16 = (v: unknown, fallback: number): number => (typeof v === 'number' ? v & 0xffff : fallback);
@@ -172,6 +173,43 @@ export const bankRamKernel: CardKernel = {
   claims: (cfg) => ({ ports: [u8(cfg.selectPort, 0x40)] }),
 };
 
+/**
+ * Boot / phantom ROM overlay: a monitor/boot ROM shadows a fixed window at
+ * power-on (so the CPU runs firmware straight out of reset), then a write to the
+ * control port pages it out to reveal the RAM underneath — the S-100 autoboot
+ * trick (Cromemco 64FDC boot ROM, IMSAI MPU-B shadow ROM). The card owns its
+ * window; the host resolver *consumes* the `rom` region below (injects the burned
+ * image into config, omits the region from the spec) since the card attaches its
+ * own overlay memory. `type: 'boot-rom'` is the marker the host keys that on.
+ */
+export const bootRomKernel: CardKernel = {
+  id: 'boot-rom',
+  label: 'Boot / phantom ROM overlay',
+  type: 'boot-rom',
+  configSchema: {
+    window: { type: 'u16', default: 0xc000, min: 0, max: 0xffff, description: 'Overlay window base address' },
+    size: { type: 'u16', default: 0x0800, min: 1, max: 0xffff, description: 'Overlay size in bytes' },
+    controlPort: { type: 'u8', default: 0x40, min: 0, max: 0xff, description: 'Control port — a write pages the overlay out' },
+    writeThrough: {
+      type: 'enum',
+      default: 'through',
+      enum: ['through', 'drop'],
+      description: 'Writes under the ROM: fall through to shadow RAM (through) or drop while mapped (drop)',
+    },
+  },
+  create: (id, cfg) =>
+    new BootRomCard(id, {
+      window: u16(cfg.window, 0xc000),
+      size: u16(cfg.size, 0x0800),
+      controlPort: u8(cfg.controlPort, 0x40),
+      writeThrough: cfg.writeThrough !== 'drop',
+      image: cfg.image instanceof Uint8Array ? cfg.image : undefined,
+    }),
+  claims: (cfg) => ({ ports: [u8(cfg.controlPort, 0x40)] }),
+  // Burn geometry + digest/override carrier only — the resolver consumes it.
+  memory: (cfg) => [{ id: 'rom', base: u16(cfg.window, 0xc000), size: u16(cfg.size, 0x0800), kind: 'rom' }],
+};
+
 /** All built-in behavior kernels, keyed by id. */
 export const kernels: ReadonlyArray<CardKernel> = [
   serialKernel,
@@ -181,6 +219,7 @@ export const kernels: ReadonlyArray<CardKernel> = [
   dazzlerKernel,
   rtcKernel,
   bankRamKernel,
+  bootRomKernel,
 ];
 
 export const kernelById = (id: string): CardKernel | undefined => kernels.find((k) => k.id === id);
